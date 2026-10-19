@@ -15,6 +15,9 @@ import type {
 /** La app se muestra en español: el backend traduce las recetas de TheMealDB (que está en inglés). */
 const IDIOMA = 'es'
 
+/** La IA puede tardar bastante más que el resto de la API (y probar modelos de reserva). */
+const TIEMPO_IA = 100_000
+
 export interface EstadoApi {
   status: string
 }
@@ -121,24 +124,32 @@ export const favoritesApi = {
 export const aiApi = {
   suggestions: async (ingredientes: string[], tipoComida = '', maxResults = 5) =>
     (
-      await api.post<{ suggestions: AiSuggestion[] }>('/ai/suggestions/', {
-        ingredients: ingredientes,
-        max_results: maxResults,
-        meal_type: tipoComida,
-      })
+      await api.post<{ suggestions: AiSuggestion[] }>(
+        '/ai/suggestions/',
+        {
+          ingredients: ingredientes,
+          max_results: maxResults,
+          meal_type: tipoComida,
+        },
+        { timeout: TIEMPO_IA },
+      )
     ).data.suggestions,
   adaptRecipe: async (
     receta: Pick<Recipe, 'title' | 'ingredients'> & Partial<Recipe>,
     disponibles: string[],
   ) =>
     (
-      await api.post<AiAdaptation>('/ai/adapt-recipe/', {
-        recipe: {
-          title: receta.title,
-          ingredients: receta.ingredients,
-          instructions: receta.instructions ?? '',
+      await api.post<AiAdaptation>(
+        '/ai/adapt-recipe/',
+        {
+          recipe: {
+            title: receta.title,
+            ingredients: receta.ingredients,
+            instructions: receta.instructions ?? '',
+          },
+          available_ingredients: disponibles,
         },
-        available_ingredients: disponibles,
-      })
+        { timeout: TIEMPO_IA },
+      )
     ).data,
 }

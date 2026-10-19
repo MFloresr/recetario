@@ -71,7 +71,8 @@ def test_si_vuelve_a_fallar_el_error_es_controlado(client, fake_ai):
     [
         (requests.Timeout(), 504, "ai_timeout"),
         (requests.ConnectionError(), 502, "ai_unreachable"),
-        (FakeResponse({}, status_code=429), 502, "ai_http_error"),
+        (FakeResponse({}, status_code=429), 502, "ai_overloaded"),
+        (FakeResponse({}, status_code=401), 502, "ai_http_error"),
         (FakeResponse({"sin": "choices"}), 502, "ai_invalid_response"),
     ],
 )
@@ -194,3 +195,45 @@ def test_si_wikipedia_falla_las_recetas_salen_sin_foto(client, fake_ai, wikipedi
     r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
     assert r.status_code == 200
     assert [s["image"] for s in r.json()["suggestions"]] == [None, None]
+
+
+# --- Modelos de reserva cuando el principal está saturado ---
+
+
+def test_si_el_modelo_principal_esta_saturado_se_usa_el_de_reserva(client, fake_ai, settings, monkeypatch):
+    settings.AI_MODEL = "principal"
+    settings.AI_FALLBACK_MODELS = ["reserva-1", "reserva-2"]
+    usados = []
+
+    def post(self, url, json=None, **kw):
+        usados.append(json["model"])
+        if json["model"] != "reserva-2":
+            return FakeResponse({}, status_code=503)
+        return FakeResponse({"choices": [{"message": {"content": "{\"suggestions\": []}"}}]})
+
+    monkeypatch.setattr(requests.Session, "post", post)
+    r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
+    assert r.status_code == 200
+    assert usados == ["principal", "reserva-1", "reserva-2"]
+
+
+def test_un_error_que_no_es_de_saturacion_no_prueba_las_reservas(client, fake_ai, settings, monkeypatch):
+    settings.AI_FALLBACK_MODELS = ["reserva"]
+    usados = []
+
+    def post(self, url, json=None, **kw):
+        usados.append(json["model"])
+        return FakeResponse({}, status_code=401)
+
+    monkeypatch.setattr(requests.Session, "post", post)
+    r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
+    assert r.status_code == 502 and r.json()["code"] == "ai_http_error"
+    assert len(usados) == 1
+
+
+def test_si_todos_los_modelos_estan_saturados_el_error_es_controlado(client, fake_ai, settings, monkeypatch):
+    settings.AI_FALLBACK_MODELS = ["reserva"]
+    monkeypatch.setattr(requests.Session, "post", lambda self, url, **kw: FakeResponse({}, status_code=503))
+    r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
+    assert r.status_code == 502 and r.json()["code"] == "ai_overloaded"
+    assert "saturada" in r.json()["detail"]

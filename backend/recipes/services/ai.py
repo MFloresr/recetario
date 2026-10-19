@@ -16,6 +16,7 @@ from ..exceptions import AIServiceError
 from ..normalization import normalize_name
 
 TIMEOUT = 60
+RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 
 SYSTEM_PROMPT = (
     "Eres un asistente de cocina. Responde SIEMPRE en español y SOLO con un objeto JSON válido, "
@@ -119,9 +120,18 @@ class AIRecipeService(ABC):
 
 
 class OpenAICompatibleService(AIRecipeService):
-    def __init__(self, api_key: str, model: str, base_url: str, session: requests.Session | None = None, timeout: int = TIMEOUT):
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        base_url: str,
+        session: requests.Session | None = None,
+        timeout: int = TIMEOUT,
+        fallback_models: list[str] | None = None,
+    ):
         self.api_key = api_key
         self.model = model
+        self.fallback_models = [m for m in (fallback_models or []) if m and m != model]
         self.base_url = base_url.rstrip("/")
         self.session = session or requests.Session()
         self.timeout = timeout
@@ -129,28 +139,35 @@ class OpenAICompatibleService(AIRecipeService):
     # -- comunicación con el proveedor --
 
     def _chat(self, system: str, user: str) -> str:
-        cuerpo = {
-            "model": self.model,
-            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.4,
-        }
-        try:
-            respuesta = self.session.post(
-                f"{self.base_url}/chat/completions",
-                json=cuerpo,
-                headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=self.timeout,
-            )
-        except requests.Timeout as exc:
-            raise AIServiceError("La IA tardó demasiado en responder. Puedes seguir usando la búsqueda normal.", status_code=504, code="ai_timeout") from exc
-        except requests.RequestException as exc:
-            raise AIServiceError("No se pudo conectar con la IA. Puedes seguir usando la búsqueda normal.", status_code=502, code="ai_unreachable") from exc
+        """Pide la respuesta al modelo principal; si está saturado (429/5xx) prueba con los de reserva."""
+        respuesta = None
+        for modelo in [self.model, *self.fallback_models]:
+            cuerpo = {
+                "model": modelo,
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                "response_format": {"type": "json_object"},
+                "temperature": 0.4,
+            }
+            try:
+                respuesta = self.session.post(
+                    f"{self.base_url}/chat/completions",
+                    json=cuerpo,
+                    headers={"Authorization": f"Bearer {self.api_key}"},
+                    timeout=self.timeout,
+                )
+            except requests.Timeout as exc:
+                raise AIServiceError("La IA tardó demasiado en responder. Puedes seguir usando la búsqueda normal.", status_code=504, code="ai_timeout") from exc
+            except requests.RequestException as exc:
+                raise AIServiceError("No se pudo conectar con la IA. Puedes seguir usando la búsqueda normal.", status_code=502, code="ai_unreachable") from exc
+            if respuesta.status_code not in RETRYABLE_STATUS:
+                break
         if respuesta.status_code >= 400:
+            saturada = respuesta.status_code in RETRYABLE_STATUS
             raise AIServiceError(
-                f"La IA respondió con un error ({respuesta.status_code}). Puedes seguir usando la búsqueda normal.",
+                ("La IA está saturada ahora mismo" if saturada else "La IA respondió con un error")
+                + f" ({respuesta.status_code}). Puedes seguir usando la búsqueda normal.",
                 status_code=502,
-                code="ai_http_error",
+                code="ai_overloaded" if saturada else "ai_http_error",
             )
         try:
             return respuesta.json()["choices"][0]["message"]["content"]
@@ -251,4 +268,5 @@ def get_ai_service() -> AIRecipeService:
         api_key=settings.AI_API_KEY,
         model=settings.AI_MODEL,
         base_url=settings.AI_BASE_URL or DEFAULT_BASE_URLS[proveedor],
+        fallback_models=settings.AI_FALLBACK_MODELS,
     )
