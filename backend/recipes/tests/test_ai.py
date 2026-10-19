@@ -127,3 +127,70 @@ def test_la_peticion_a_la_ia_lleva_formato_json_y_la_clave_solo_en_cabecera(clie
     assert capturado["json"]["response_format"] == {"type": "json_object"}
     assert capturado["headers"]["Authorization"] == "Bearer clave-de-prueba"
     assert "clave-de-prueba" not in str(capturado["json"])
+
+
+# --- Recetas completas: foto, tipo de comida, dificultad, tiempo ---
+
+COMPLETA = {
+    "suggestions": [
+        {
+            "title": "Tortilla de patatas",
+            "description": "Clásico de la cocina española",
+            "meal_type": "Comida",
+            "servings": 4,
+            "ingredients": [{"name": "huevos", "quantity": "6"}, {"name": "patatas", "quantity": "600 g"}],
+            "ingredients_used": ["huevos"],
+            "missing_ingredients": ["patatas"],
+            "steps": ["Pela las patatas", "Fríelas", "Mézclalas con el huevo batido"],
+            "estimated_minutes": 40,
+            "difficulty": "Fácil",
+        },
+        {"title": "Batido de plátano", "meal_type": "Smoothie", "steps": ["Tritura todo"], "difficulty": "media"},
+    ]
+}
+
+
+def test_receta_completa_con_foto_tipo_y_dificultad(client, fake_ai, wikipedia):
+    wikipedia.pages = [{"title": "Tortilla de patatas", "thumbnail": {"source": "https://upload.wikimedia.org/tortilla.jpg"}, "fullurl": "https://es.wikipedia.org/wiki/Tortilla_de_patatas", "index": 1}]
+    fake_ai.queue = [json.dumps(COMPLETA)]
+    r = client.post("/api/ai/suggestions/", {**ENTRADA, "meal_type": "almuerzo"}, format="json")
+    assert r.status_code == 200
+    tortilla, batido = r.json()["suggestions"]
+    assert tortilla["meal_type"] == "almuerzo"  # «Comida» se normaliza
+    assert tortilla["difficulty"] == "fácil" and tortilla["estimated_minutes"] == 40 and tortilla["servings"] == 4
+    assert tortilla["ingredients"] == [{"name": "huevos", "quantity": "6"}, {"name": "patatas", "quantity": "600 g"}]
+    assert tortilla["image"] == {"url": "https://upload.wikimedia.org/tortilla.jpg", "credit": "Wikipedia", "page": "https://es.wikipedia.org/wiki/Tortilla_de_patatas"}
+    assert batido["meal_type"] == "batido" and batido["image"] is None  # sin artículo fiable no hay foto
+    assert batido["ingredients"] == []
+
+
+def test_tipo_de_comida_desconocido_pasa_a_otro(client, fake_ai):
+    fake_ai.queue = [json.dumps({"suggestions": [{"title": "Cosa", "meal_type": "algo raro"}]})]
+    r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
+    assert r.json()["suggestions"][0]["meal_type"] == "otro"
+
+
+def test_el_tipo_de_comida_pedido_viaja_en_la_peticion_a_la_ia(client, fake_ai, monkeypatch):
+    capturado = {}
+
+    def post(self, url, json=None, **kw):
+        capturado["prompt"] = json["messages"][1]["content"]
+        return FakeResponse({"choices": [{"message": {"content": "{\"suggestions\": []}"}}]})
+
+    monkeypatch.setattr(requests.Session, "post", post)
+    assert client.post("/api/ai/suggestions/", {**ENTRADA, "meal_type": "postre"}, format="json").status_code == 200
+    assert "de tipo «postre»" in capturado["prompt"]
+    assert "ingredients" in capturado["prompt"] and "estimated_minutes" in capturado["prompt"]
+
+
+def test_tipo_de_comida_invalido_en_la_entrada_da_400(client, fake_ai):
+    assert client.post("/api/ai/suggestions/", {**ENTRADA, "meal_type": "banquete"}, format="json").status_code == 400
+    assert fake_ai.calls == 0
+
+
+def test_si_wikipedia_falla_las_recetas_salen_sin_foto(client, fake_ai, wikipedia):
+    wikipedia.fail = True
+    fake_ai.queue = [json.dumps(COMPLETA)]
+    r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
+    assert r.status_code == 200
+    assert [s["image"] for s in r.json()["suggestions"]] == [None, None]

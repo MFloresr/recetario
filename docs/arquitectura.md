@@ -23,6 +23,7 @@ services/
    ├── suggestions.py  orquesta la búsqueda por ingredientes
    ├── translation.py  traducción con caché en base de datos (MyMemory o IA)
    ├── localization.py pasa resultados y recetas al español (?lang=es)
+   ├── images.py       foto orientativa de un plato desde Wikipedia (solo si el artículo coincide)
    └── ai.py           AIRecipeService (interfaz) + proveedor compatible con OpenAI
    │
    ▼
@@ -55,5 +56,5 @@ Un ingrediente de la despensa cubre uno de la receta si uno contiene todas las p
 
 ## Pruebas
 
-- **Backend (pytest):** 134 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
-- **Frontend (Vitest):** 32 tests de componentes (formulario de login, chip de ingrediente, tarjeta de receta, añadir ingredientes, lista de la compra), conversión de errores y utilidades.
+- **Backend (pytest):** 157 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
+- **Frontend (Vitest):** 38 tests de componentes (formulario de login, chip de ingrediente, tarjeta de receta, añadir ingredientes, lista de la compra), conversión de errores y utilidades.

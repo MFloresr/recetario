@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { RecipeSummary } from '@/types/api'
+import { tipoComida } from '@/utils/catalogo'
 
 const props = defineProps<{ receta: RecipeSummary; favorita: boolean; guardando?: boolean }>()
 const emit = defineEmits<{ 'alternar-favorito': [] }>()
@@ -19,6 +20,7 @@ const color = computed(() =>
       ? 'warning'
       : 'error',
 )
+const tipo = computed(() => tipoComida(props.receta.meal_type))
 const origen = computed(() =>
   [props.receta.category, props.receta.area].filter(Boolean).join(' · '),
 )
@@ -37,6 +39,15 @@ const origen = computed(() =>
     <v-card-item>
       <v-card-title class="text-wrap">{{ receta.title }}</v-card-title>
       <v-card-subtitle v-if="origen">{{ origen }}</v-card-subtitle>
+      <v-chip
+        v-if="tipo"
+        class="mt-2"
+        size="small"
+        :prepend-icon="tipo.icono"
+        variant="tonal"
+        color="secondary"
+        >{{ tipo.etiqueta }}</v-chip
+      >
     </v-card-item>
 
     <v-card-text class="flex-grow-1 pt-0">

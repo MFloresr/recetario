@@ -2,7 +2,7 @@
 
 import re
 
-from ..spanish import area_es, category_es, ingredient_known_es, measure_es
+from ..spanish import area_es, category_es, ingredient_known_es, meal_type_of, measure_es
 from .translation import get_translator, translate_strings
 
 SUPPORTED = {"es"}
@@ -46,6 +46,7 @@ def localize_summaries(results: list[dict], lang: str) -> list[dict]:
             "title": traducidos.get(r["title"], r["title"]),
             "original_title": r["title"],
             "category": category_es(r["category"]),
+            "meal_type": meal_type_of(r["category"]),
             "area": area_es(r["area"]),
             "matched_ingredients": [ingrediente(n) for n in r["matched_ingredients"]],
             "missing_ingredients": [ingrediente(n) for n in r["missing_ingredients"]],
@@ -72,6 +73,7 @@ def localize_recipe(receta: dict, lang: str, match: dict | None = None) -> dict:
         "title": traducidos.get(receta["title"], receta["title"]),
         "original_title": receta["title"],
         "category": category_es(receta.get("category", "")),
+        "meal_type": meal_type_of(receta.get("category", "")),
         "area": area_es(receta.get("area", "")),
         "ingredients": [{"ingredient": ingrediente(i["ingredient"]), "measure": measure_es(i.get("measure", ""))} for i in receta["ingredients"]],
         "instructions": "\n".join(traducidos.get(p, p) for p in pasos),

@@ -26,6 +26,7 @@ from .serializers import (
     UserSerializer,
 )
 from .services import ai as ai_service
+from .services.images import attach_images
 from .catalog import to_english
 from .services.localization import localize_recipe, localize_summaries
 from .services.matching import calculate_match, with_spanish_names
@@ -199,8 +200,11 @@ class AISuggestionsView(AIBaseView):
         d = entrada.validated_data
         servicio = ai_service.get_ai_service()
         resultado = servicio.suggest_recipes(
-            d["ingredients"], {"max_results": d["max_results"], "diet": d["diet"], "avoid": d["avoid"]}
+            d["ingredients"],
+            {"max_results": d["max_results"], "diet": d["diet"], "avoid": d["avoid"], "meal_type": d["meal_type"]},
         )
+        # Foto orientativa de Wikipedia cuando el plato tiene artículo propio (si no, `image` es null)
+        resultado["suggestions"] = attach_images(resultado["suggestions"])
         return Response(resultado)
 
 

@@ -10,7 +10,7 @@ Recetario inteligente: añades los ingredientes que tienes en casa y la app te m
 - **Detalle de receta** con indicador de coincidencia con tu despensa y los ingredientes que te faltan.
 - **Lista de la compra** agrupada por categoría; desde una receta se añaden de golpe los ingredientes que faltan.
 - **Favoritos** con notas personales.
-- **IA opcional** (sugerencias, adaptar receta, lista de la compra). Si no está configurada o falla, la app sigue funcionando con la búsqueda normal.
+- **IA opcional.** «Sugiéreme algo con IA» propone recetas completas: tipo de comida (desayuno, almuerzo, merienda, cena, postre, batido, snack…), tiempo, dificultad, raciones, ingredientes con cantidades, pasos y una foto orientativa cuando existe. También adapta una receta a tu despensa. Si no está configurada o falla, la app sigue funcionando con la búsqueda normal.
 - Interfaz **Material Design 3** (Vuetify), responsive, con tema claro y oscuro.
 
 ## Estructura
@@ -45,7 +45,7 @@ python manage.py runserver
 
 La API queda en <http://localhost:8000/api/>. Comprobación rápida: <http://localhost:8000/api/health/> responde `{"status":"ok"}`.
 
-Tests (134):
+Tests (157):
 
 ```bash
 cd backend
@@ -65,7 +65,7 @@ npm run dev
 
 La app queda en <http://localhost:5173>. Crea una cuenta en «Crear cuenta» y empieza por añadir ingredientes.
 
-Otros comandos: `npm run test` (Vitest, 32 tests), `npm run lint`, `npm run format`, `npm run build`.
+Otros comandos: `npm run test` (Vitest, 38 tests), `npm run lint`, `npm run format`, `npm run build`.
 
 ## Variables de entorno
 
@@ -104,6 +104,12 @@ TheMealDB solo existe en inglés, así que el frontend pide siempre `?lang=es` y
 - La búsqueda por nombre también acepta español («pollo al curry»): se traduce al inglés antes de consultar TheMealDB.
 - Sin `lang`, la API devuelve los datos originales de TheMealDB en inglés.
 
+### Recetas de la IA: qué son y qué no son
+
+- **Las genera la IA a partir de lo que sabe; no navega por internet.** Una IA conectada por API (Gemini, OpenAI…) no busca en la web: escribe la receta desde su conocimiento. Por eso la pantalla lo avisa y conviene revisar cantidades y tiempos. Se le pide que proponga platos reales y conocidos, con su nombre habitual.
+- **Fotos:** vienen de Wikipedia (libre y sin clave) y solo se muestran si existe un artículo con el mismo nombre que el plato; si no, la receta sale sin foto en lugar de con una equivocada. Cada foto enlaza a su artículo (autoría y licencia). Los platos clásicos (tortilla de patatas, paella, gazpacho…) suelen tener foto; los poco conocidos, no.
+- **Tipo de comida:** puedes pedirlo («quiero un postre»). Las recetas de TheMealDB llevan también un tipo deducido de su categoría (Breakfast → desayuno, Dessert → postre…). TheMealDB no ofrece tiempo ni dificultad, así que esas recetas no los muestran.
+
 ### Usar otro proveedor de IA
 
 El servicio de IA habla el protocolo de OpenAI (`/chat/completions` con salida JSON), que ofrecen muchos proveedores. Para usar otro basta con cambiar tres variables, sin tocar código. Por ejemplo, con la API compatible de Gemini:
@@ -131,7 +137,7 @@ Para un proveedor con otro protocolo se escribe otra subclase de `AIRecipeServic
 | GET | `/api/recipes/suggestions/?ingredients=pollo,arroz` | Sugerencias por ingredientes |
 | GET | `/api/recipes/{external_id}/` | Detalle (con `?ingredients=` añade la coincidencia) |
 | GET POST PATCH DELETE | `/api/favorites/` | Favoritos |
-| POST | `/api/ai/suggestions/` · `/api/ai/adapt-recipe/` · `/api/ai/shopping-list/` | IA |
+| POST | `/api/ai/suggestions/` (acepta `meal_type`) · `/api/ai/adapt-recipe/` · `/api/ai/shopping-list/` | IA |
 | GET | `/api/health/` | Comprobación de que la API responde |
 
 Todas las rutas salvo `health`, `register` y `login` exigen `Authorization: Bearer <token>`, y cada usuario solo ve y modifica sus propios datos.

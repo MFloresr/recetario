@@ -10,6 +10,7 @@ import { useRecipeStore } from '@/stores/recipe'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import { useUiStore } from '@/stores/ui'
 import type { AiAdaptation, Recipe } from '@/types/api'
+import { tipoComida } from '@/utils/catalogo'
 import { mensajeDeError, notificarError } from '@/utils/errores'
 import { normalizar, pasosDeInstrucciones } from '@/utils/texto'
 
@@ -39,6 +40,7 @@ const externalId = computed(() => String(route.params.externalId))
 const esFavorita = computed(() =>
   receta.value ? recipes.esFavorito(receta.value.external_id) : false,
 )
+const tipo = computed(() => tipoComida(receta.value?.meal_type))
 const pasos = computed(() => pasosDeInstrucciones(receta.value?.instructions ?? ''))
 const faltantes = computed(() => receta.value?.match?.missing ?? [])
 const faltanSet = computed(
@@ -127,6 +129,9 @@ async function adaptar() {
 
       <h1 class="text-h4 font-weight-bold mb-2">{{ receta.title }}</h1>
       <div class="d-flex flex-wrap ga-2 mb-4">
+        <v-chip v-if="tipo" :prepend-icon="tipo.icono" color="secondary" variant="tonal">{{
+          tipo.etiqueta
+        }}</v-chip>
         <v-chip v-if="receta.category" prepend-icon="mdi-tag-outline">{{ receta.category }}</v-chip>
         <v-chip v-if="receta.area" prepend-icon="mdi-earth">{{ receta.area }}</v-chip>
         <v-chip prepend-icon="mdi-database-outline">Fuente: TheMealDB</v-chip>

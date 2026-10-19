@@ -119,11 +119,12 @@ export const favoritesApi = {
 // --- IA ---
 
 export const aiApi = {
-  suggestions: async (ingredientes: string[], maxResults = 5) =>
+  suggestions: async (ingredientes: string[], tipoComida = '', maxResults = 5) =>
     (
       await api.post<{ suggestions: AiSuggestion[] }>('/ai/suggestions/', {
         ingredients: ingredientes,
         max_results: maxResults,
+        meal_type: tipoComida,
       })
     ).data.suggestions,
   adaptRecipe: async (

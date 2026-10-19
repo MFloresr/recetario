@@ -81,3 +81,27 @@ export const CATEGORIAS_RECETA = [
   { valor: 'Vegan', etiqueta: 'Vegano' },
   { valor: 'Vegetarian', etiqueta: 'Vegetariano' },
 ]
+
+/** Tipos de comida: valor (el que usa la API), etiqueta e icono. */
+export const TIPOS_COMIDA = [
+  { valor: 'desayuno', etiqueta: 'Desayuno', icono: 'mdi-coffee-outline' },
+  { valor: 'almuerzo', etiqueta: 'Almuerzo', icono: 'mdi-silverware-fork-knife' },
+  { valor: 'merienda', etiqueta: 'Merienda', icono: 'mdi-cookie-outline' },
+  { valor: 'cena', etiqueta: 'Cena', icono: 'mdi-weather-night' },
+  { valor: 'postre', etiqueta: 'Postre', icono: 'mdi-cupcake' },
+  { valor: 'batido', etiqueta: 'Batido', icono: 'mdi-blender' },
+  { valor: 'snack', etiqueta: 'Snack', icono: 'mdi-food-croissant' },
+  { valor: 'entrante', etiqueta: 'Entrante', icono: 'mdi-food-variant' },
+  { valor: 'plato principal', etiqueta: 'Plato principal', icono: 'mdi-pot-steam-outline' },
+  { valor: 'guarnición', etiqueta: 'Guarnición', icono: 'mdi-leaf' },
+  { valor: 'bebida', etiqueta: 'Bebida', icono: 'mdi-cup-water' },
+] as const
+
+export function tipoComida(valor: string | undefined) {
+  return TIPOS_COMIDA.find((t) => t.valor === valor)
+}
+
+/** Tipos que se pueden pedir a la IA (los que tienen sentido como «quiero un…»). */
+export const TIPOS_PARA_IA = TIPOS_COMIDA.filter((t) =>
+  ['desayuno', 'almuerzo', 'merienda', 'cena', 'postre', 'batido', 'snack'].includes(t.valor),
+)

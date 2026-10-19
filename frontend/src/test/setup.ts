@@ -19,3 +19,10 @@ if (!window.matchMedia) {
       dispatchEvent: () => false,
     }) as MediaQueryList
 }
+
+// Los diálogos de Vuetify consultan el viewport visual
+if (!('visualViewport' in globalThis)) {
+  Object.defineProperty(globalThis, 'visualViewport', {
+    value: { width: 1024, height: 768, scale: 1, addEventListener() {}, removeEventListener() {} },
+  })
+}

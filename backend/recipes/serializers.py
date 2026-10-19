@@ -5,6 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
+from .services.ai import MEAL_TYPES
 from .services.localization import localize_recipe
 
 User = get_user_model()
@@ -177,5 +178,6 @@ class AIRecipeInputSerializer(serializers.Serializer):
 class AISuggestionsInputSerializer(serializers.Serializer):
     ingredients = serializers.ListField(child=serializers.CharField(max_length=100), min_length=1, max_length=60)
     max_results = serializers.IntegerField(min_value=1, max_value=10, default=5)
+    meal_type = serializers.ChoiceField(choices=MEAL_TYPES, required=False, allow_blank=True, default="")
     diet = serializers.CharField(allow_blank=True, required=False, default="", max_length=100)
     avoid = serializers.ListField(child=serializers.CharField(max_length=100), required=False, default=list, max_length=30)

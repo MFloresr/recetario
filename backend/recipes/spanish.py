@@ -15,6 +15,14 @@ CATEGORIES_ES = {
     "Side": "Guarnición", "Starter": "Entrante", "Vegan": "Vegano", "Vegetarian": "Vegetariano",
 }
 
+# Categoría de TheMealDB → tipo de comida
+MEAL_TYPE_BY_CATEGORY = {
+    "Breakfast": "desayuno", "Dessert": "postre", "Starter": "entrante", "Side": "guarnición", "Vegan": "plato principal",
+    "Vegetarian": "plato principal", "Beef": "plato principal", "Chicken": "plato principal", "Lamb": "plato principal",
+    "Pork": "plato principal", "Goat": "plato principal", "Seafood": "plato principal", "Pasta": "plato principal",
+    "Miscellaneous": "otro",
+}
+
 AREAS_ES = {
     "American": "Estadounidense", "British": "Británica", "Canadian": "Canadiense", "Chinese": "China", "Croatian": "Croata",
     "Dutch": "Holandesa", "Egyptian": "Egipcia", "Filipino": "Filipina", "French": "Francesa", "Greek": "Griega",
@@ -90,6 +98,10 @@ _MEASURE_RULES = [
     (r"\band\b", "y"),
     (r"\boz\b", "oz"),
 ]
+
+
+def meal_type_of(categoria: str) -> str:
+    return MEAL_TYPE_BY_CATEGORY.get(categoria, "otro")
 
 
 def category_es(valor: str) -> str:

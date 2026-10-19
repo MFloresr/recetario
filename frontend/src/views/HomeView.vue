@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AiSuggestionsDialog from '@/components/AiSuggestionsDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -9,8 +9,9 @@ import RecipeCard from '@/components/RecipeCard.vue'
 import { useFavorito } from '@/composables/useFavorito'
 import { usePantryStore } from '@/stores/pantry'
 import { useRecipeStore } from '@/stores/recipe'
+import { useShoppingListStore } from '@/stores/shoppingList'
 import { useUiStore } from '@/stores/ui'
-import type { Ingredient } from '@/types/api'
+import type { AiSuggestion, Ingredient } from '@/types/api'
 import { CATEGORIAS_RECETA } from '@/utils/catalogo'
 import { mensajeDeError, notificarError } from '@/utils/errores'
 
@@ -31,6 +32,8 @@ const eliminando = ref(false)
 
 const iaAbierta = ref(false)
 const iaError = ref('')
+const iaTipo = ref('')
+const shopping = useShoppingListStore()
 
 const disponibles = computed(() => pantry.items.filter((i) => i.in_pantry))
 const opcionesCategoria = [
@@ -100,11 +103,27 @@ async function sugerirConIa() {
   iaAbierta.value = true
   iaError.value = ''
   try {
-    await recipes.pedirSugerenciasIa(pantry.nombresDisponibles)
+    await recipes.pedirSugerenciasIa(pantry.nombresDisponibles, iaTipo.value)
   } catch (e) {
     iaError.value = mensajeDeError(e)
   }
 }
+
+async function añadirFaltantesIa(receta: AiSuggestion) {
+  try {
+    for (const nombre of receta.missing_ingredients) await shopping.añadir(nombre)
+    ui.mostrarAviso(
+      `${receta.missing_ingredients.length} ingredientes en tu lista de la compra`,
+      'success',
+    )
+  } catch (e) {
+    notificarError(e)
+  }
+}
+
+watch(iaTipo, () => {
+  if (iaAbierta.value) void sugerirConIa()
+})
 </script>
 
 <template>
@@ -250,9 +269,11 @@ async function sugerirConIa() {
     />
     <AiSuggestionsDialog
       v-model="iaAbierta"
+      v-model:tipo="iaTipo"
       :sugerencias="recipes.sugerenciasIa"
       :cargando="recipes.cargandoIa"
       :error="iaError"
+      @añadir-faltantes="añadirFaltantesIa"
       @reintentar="sugerirConIa"
     />
   </v-container>

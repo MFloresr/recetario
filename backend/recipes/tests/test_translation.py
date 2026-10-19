@@ -174,3 +174,11 @@ def test_favoritos_en_espanol(client, fake_mealdb):
 def test_crear_favorito_con_lang_devuelve_la_receta_traducida(client, fake_mealdb):
     r = client.post("/api/favorites/?lang=es", {"external_id": "2"}, format="json")
     assert r.status_code == 201 and r.json()["recipe"]["title"] == "ES(Garlic Rice)"
+
+
+def test_las_recetas_de_themealdb_llevan_tipo_de_comida(client, fake_mealdb):
+    r = client.get("/api/recipes/suggestions/", {"ingredients": "pollo,arroz,ajo", "lang": "es"})
+    tipos = {x["original_title"]: x["meal_type"] for x in r.json()["results"]}
+    assert tipos["Chicken Handi"] == "plato principal"
+    assert tipos["Garlic Rice"] == "guarnición"  # categoría «Side»
+    assert client.get("/api/recipes/1/", {"lang": "es"}).json()["meal_type"] == "plato principal"

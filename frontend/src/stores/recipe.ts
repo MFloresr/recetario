@@ -99,11 +99,11 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
-  async function pedirSugerenciasIa(ingredientes: string[]) {
+  async function pedirSugerenciasIa(ingredientes: string[], tipoComida = '') {
     cargandoIa.value = true
     sugerenciasIa.value = []
     try {
-      sugerenciasIa.value = await aiApi.suggestions(ingredientes)
+      sugerenciasIa.value = await aiApi.suggestions(ingredientes, tipoComida)
     } catch (e) {
       throw aApiError(e)
     } finally {

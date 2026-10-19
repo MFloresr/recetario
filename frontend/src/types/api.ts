@@ -70,6 +70,7 @@ export interface Recipe {
   match?: RecipeMatch
   /** Título en inglés, cuando la receta viene traducida. */
   original_title?: string
+  meal_type?: string
   /** Cómo se tradujo al español. `complete: false` = alguna parte se quedó en inglés. */
   translation?: { lang: string; provider: string | null; complete: boolean }
 }
@@ -85,6 +86,7 @@ export interface RecipeSummary {
   missing_ingredients: string[]
   source: string
   original_title?: string
+  meal_type?: string
 }
 
 export interface SuggestionsResponse {
@@ -108,11 +110,16 @@ export interface Favorite {
 export interface AiSuggestion {
   title: string
   description: string
+  meal_type: string
+  servings: number | null
+  ingredients: { name: string; quantity: string }[]
   ingredients_used: string[]
   missing_ingredients: string[]
   steps: string[]
   estimated_minutes: number | null
   difficulty: string
+  /** Foto orientativa de Wikipedia; null si no hay un artículo fiable sobre el plato. */
+  image: { url: string; credit: string; page: string } | null
 }
 
 export interface AiAdaptation {

@@ -11,6 +11,43 @@ from rest_framework.test import APIClient
 User = get_user_model()
 
 
+class FakeWikipedia:
+    """Wikipedia simulada: por defecto no hay artículos. `pages` = lista de {title, thumbnail, fullurl, index}."""
+
+    def __init__(self):
+        self.pages: list[dict] = []
+        self.calls: list[dict] = []
+        self.fail = False
+
+    def get(self, url, params=None, **kwargs):
+        self.calls.append(params or {})
+        if self.fail:
+            raise requests.ConnectionError()
+        paginas = {str(i): p for i, p in enumerate(self.pages)}
+        return FakeResponse({"query": {"pages": paginas}} if paginas else {"batchcomplete": ""})
+
+
+@pytest.fixture
+def wikipedia():
+    return FakeWikipedia()
+
+
+@pytest.fixture(autouse=True)
+def bloquear_red(monkeypatch, wikipedia):
+    """Ningún test sale a internet: solo responde Wikipedia (simulada) y los fakes que cada test pida."""
+
+    def get(self, url, **kw):
+        if "wikipedia.org" in url:
+            return wikipedia.get(url, **kw)
+        raise RuntimeError(f"Llamada de red real en un test: {url}")
+
+    def post(self, url, **kw):
+        raise RuntimeError(f"Llamada de red real en un test: {url}")
+
+    monkeypatch.setattr(requests.Session, "get", get)
+    monkeypatch.setattr(requests.Session, "post", post)
+
+
 @pytest.fixture(autouse=True)
 def limpiar_cache():
     cache.clear()
@@ -98,6 +135,8 @@ class FakeMealDB:
     def get(self, url, params=None, timeout=None, **kwargs):
         path = url.rsplit("/", 1)[-1]
         params = params or {}
+        if "wikipedia.org" in url:
+            return FakeResponse({"batchcomplete": ""})
         if "mymemory" in url:
             return self._mymemory(params)
         self.calls.append((path, params))
