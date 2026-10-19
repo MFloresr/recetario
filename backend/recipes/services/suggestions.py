@@ -6,7 +6,7 @@ from ..catalog import to_english
 from ..exceptions import ExternalServiceError
 from ..normalization import normalize_name
 from .matching import calculate_match
-from .recipes import fetch_recipe, remember_recipes
+from .recipes import fetch_many, remember_recipes
 from .themealdb import SOURCE, TheMealDBClient
 
 MAX_RESULTS = 20
@@ -72,15 +72,8 @@ def build_suggestions(
 
     elegidos = sorted(candidatos.values(), key=lambda c: (-c["hits"], c["title"].lower()))[:MAX_CANDIDATES]
 
-    def cargar(candidato: dict):
-        try:
-            return fetch_recipe(candidato["external_id"], client)
-        except ExternalServiceError as exc:
-            errores.append(exc)
-            return None
-
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        recetas = [r for r in pool.map(cargar, elegidos) if r]
+    recetas, errores_descarga = fetch_many([c["external_id"] for c in elegidos], client)
+    errores.extend(errores_descarga)
 
     if not recetas and errores:
         raise errores[0]

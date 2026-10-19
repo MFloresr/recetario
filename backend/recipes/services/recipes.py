@@ -1,6 +1,10 @@
 """Acceso a recetas: caché en base de datos (solo al abrir en detalle o marcar favorita) y caché en memoria."""
 
+from concurrent.futures import ThreadPoolExecutor
+
 from django.core.cache import cache
+
+from ..exceptions import ExternalServiceError
 
 from ..models import RecipeCache
 from .themealdb import SOURCE, TheMealDBClient
@@ -33,6 +37,39 @@ def fetch_recipe(external_id: str, client: TheMealDBClient | None = None) -> dic
         if receta is not None:
             cache.set(clave, receta, MEMORY_TTL)
     return receta
+
+
+def fetch_many(ids: list[str], client: TheMealDBClient | None = None) -> tuple[list[dict], list[ExternalServiceError]]:
+    """Recetas por id, en el orden pedido, más los errores de TheMealDB que hubo por el camino.
+
+    La base de datos se consulta UNA vez y desde el hilo principal; los hilos solo hacen peticiones HTTP.
+    Un hilo que tocara la base de datos abriría su propia conexión y, con el pooler de Supabase (15 clientes
+    en modo sesión), unas pocas peticiones simultáneas lo agotarían (EMAXCONNSESSION).
+    """
+    recetas = {r.external_id: recipe_to_dict(r) for r in RecipeCache.objects.filter(external_id__in=ids, source=SOURCE)}
+    pendientes = [i for i in ids if i not in recetas]
+    en_memoria = cache.get_many([f"meal:{i}" for i in pendientes])
+    for i in pendientes:
+        if f"meal:{i}" in en_memoria:
+            recetas[i] = en_memoria[f"meal:{i}"]
+    faltan = [i for i in pendientes if i not in recetas]
+    errores: list[ExternalServiceError] = []
+    if faltan:
+        cliente = client or TheMealDBClient()
+
+        def descargar(i: str):
+            try:
+                return i, cliente.get_by_id(i)
+            except ExternalServiceError as exc:
+                errores.append(exc)
+                return i, None
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            for i, receta in pool.map(descargar, faltan):
+                if receta is not None:
+                    recetas[i] = receta
+                    cache.set(f"meal:{i}", receta, MEMORY_TTL)
+    return [recetas[i] for i in ids if i in recetas], errores
 
 
 def remember_recipes(recipes: list[dict]) -> None:

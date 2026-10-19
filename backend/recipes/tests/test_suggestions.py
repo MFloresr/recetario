@@ -92,3 +92,22 @@ def test_si_themealdb_responde_basura_el_error_es_controlado(client, monkeypatch
     monkeypatch.setattr(requests.Session, "get", lambda self, url, **kw: FakeResponse(text="no es json"))
     r = client.get(URL, {"ingredients": "pollo"})
     assert r.status_code == 502 and r.json()["code"] == "themealdb_invalid_json"
+
+
+def test_los_hilos_no_abren_conexiones_a_la_base_de_datos(client, fake_mealdb, monkeypatch, wikipedia):
+    """Cada hilo con su conexión agotaría el pooler de Supabase (15 clientes en modo sesión): solo el principal."""
+    import threading
+
+    from django.db.backends.base.base import BaseDatabaseWrapper
+
+    original = BaseDatabaseWrapper.ensure_connection
+
+    def solo_principal(self):
+        assert threading.current_thread() is threading.main_thread(), "un hilo secundario abrió una conexión a la base de datos"
+        return original(self)
+
+    monkeypatch.setattr(BaseDatabaseWrapper, "ensure_connection", solo_principal)
+    r = client.get(URL, {"ingredients": "pollo,arroz,ajo,cebolla", "lang": "es"})
+    assert r.status_code == 200 and r.json()["count"] == 3
+    # la búsqueda con IA también usa hilos (fotos): tampoco pueden tocar la base de datos
+    client.get("/api/recipes/1/", {"lang": "es"})
