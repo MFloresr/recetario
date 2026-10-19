@@ -1,0 +1,26 @@
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.sqlite3
+staticfiles/
+
+# Node / Vue
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
