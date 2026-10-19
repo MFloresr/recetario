@@ -95,6 +95,8 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "EXCEPTION_HANDLER": "recipes.exceptions.api_exception_handler",
+    "DEFAULT_THROTTLE_RATES": {"ai": "40/hour"},  # la IA cuesta dinero: límite por usuario
 }
 
 SIMPLE_JWT = {
@@ -108,3 +110,5 @@ THEMEALDB_BASE_URL = env("THEMEALDB_BASE_URL", default="https://www.themealdb.co
 AI_PROVIDER = env("AI_PROVIDER", default="openai")
 AI_API_KEY = env("AI_API_KEY", default="")
 AI_MODEL = env("AI_MODEL", default="gpt-4o-mini")
+# Opcional: otra API compatible con OpenAI (Gemini, Groq, Ollama...). Vacío = api.openai.com
+AI_BASE_URL = env("AI_BASE_URL", default="")
