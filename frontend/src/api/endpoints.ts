@@ -1,0 +1,128 @@
+import { api } from './client'
+import type {
+  AiAdaptation,
+  AiSuggestion,
+  Favorite,
+  Ingredient,
+  Recipe,
+  ShoppingItem,
+  SuggestionFilters,
+  SuggestionsResponse,
+  Tokens,
+  User,
+} from '@/types/api'
+
+export interface EstadoApi {
+  status: string
+}
+
+export async function comprobarApi(): Promise<EstadoApi> {
+  const { data } = await api.get<EstadoApi>('/health/', { _sinCarga: true })
+  return data
+}
+
+// --- Autenticación ---
+
+export interface DatosRegistro {
+  email: string
+  username: string
+  password: string
+}
+
+export const authApi = {
+  register: async (datos: DatosRegistro) => (await api.post<User>('/auth/register/', datos)).data,
+  login: async (identificador: string, password: string) => {
+    const cuerpo = identificador.includes('@')
+      ? { email: identificador, password }
+      : { username: identificador, password }
+    return (await api.post<Tokens>('/auth/login/', cuerpo)).data
+  },
+  me: async () => (await api.get<User>('/auth/me/')).data,
+}
+
+// --- Despensa ---
+
+export const ingredientsApi = {
+  list: async () => (await api.get<Ingredient[]>('/ingredients/')).data,
+  create: async (name: string, quantity = '') =>
+    (await api.post<Ingredient>('/ingredients/', { name, quantity })).data,
+  update: async (
+    id: number,
+    cambios: Partial<Pick<Ingredient, 'name' | 'quantity' | 'category' | 'in_pantry'>>,
+  ) => (await api.patch<Ingredient>(`/ingredients/${id}/`, cambios)).data,
+  remove: async (id: number) => {
+    await api.delete(`/ingredients/${id}/`)
+  },
+}
+
+// --- Lista de la compra ---
+
+export const shoppingApi = {
+  list: async () => (await api.get<ShoppingItem[]>('/shopping-list/')).data,
+  create: async (name: string, quantity = '') =>
+    (await api.post<ShoppingItem>('/shopping-list/', { name, quantity })).data,
+  update: async (
+    id: number,
+    cambios: Partial<Pick<ShoppingItem, 'bought' | 'quantity' | 'name'>>,
+  ) => (await api.patch<ShoppingItem>(`/shopping-list/${id}/`, cambios)).data,
+  remove: async (id: number) => {
+    await api.delete(`/shopping-list/${id}/`)
+  },
+  clearBought: async () =>
+    (await api.post<{ deleted: number }>('/shopping-list/clear-bought/')).data,
+}
+
+// --- Recetas y favoritos ---
+
+export const recipesApi = {
+  suggestions: async (ingredientes: string[], filtros: SuggestionFilters) => {
+    const params: Record<string, string | number> = { ingredients: ingredientes.join(',') }
+    if (filtros.category) params.category = filtros.category
+    if (filtros.maxMissing !== null) params.max_missing = filtros.maxMissing
+    if (filtros.search.trim()) params.search = filtros.search.trim()
+    return (await api.get<SuggestionsResponse>('/recipes/suggestions/', { params })).data
+  },
+  detail: async (externalId: string, ingredientes: string[] = []) =>
+    (
+      await api.get<Recipe>(`/recipes/${encodeURIComponent(externalId)}/`, {
+        params: ingredientes.length ? { ingredients: ingredientes.join(',') } : {},
+      })
+    ).data,
+}
+
+export const favoritesApi = {
+  list: async () => (await api.get<Favorite[]>('/favorites/')).data,
+  create: async (externalId: string) =>
+    (await api.post<Favorite>('/favorites/', { external_id: externalId })).data,
+  updateNotes: async (id: number, notes: string) =>
+    (await api.patch<Favorite>(`/favorites/${id}/`, { notes })).data,
+  remove: async (id: number) => {
+    await api.delete(`/favorites/${id}/`)
+  },
+}
+
+// --- IA ---
+
+export const aiApi = {
+  suggestions: async (ingredientes: string[], maxResults = 5) =>
+    (
+      await api.post<{ suggestions: AiSuggestion[] }>('/ai/suggestions/', {
+        ingredients: ingredientes,
+        max_results: maxResults,
+      })
+    ).data.suggestions,
+  adaptRecipe: async (
+    receta: Pick<Recipe, 'title' | 'ingredients'> & Partial<Recipe>,
+    disponibles: string[],
+  ) =>
+    (
+      await api.post<AiAdaptation>('/ai/adapt-recipe/', {
+        recipe: {
+          title: receta.title,
+          ingredients: receta.ingredients,
+          instructions: receta.instructions ?? '',
+        },
+        available_ingredients: disponibles,
+      })
+    ).data,
+}
