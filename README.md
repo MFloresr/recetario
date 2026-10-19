@@ -45,7 +45,7 @@ python manage.py runserver
 
 La API queda en <http://localhost:8000/api/>. Comprobación rápida: <http://localhost:8000/api/health/> responde `{"status":"ok"}`.
 
-Tests (157):
+Tests (159):
 
 ```bash
 cd backend
@@ -141,6 +141,31 @@ Para un proveedor con otro protocolo se escribe otra subclase de `AIRecipeServic
 | GET | `/api/health/` | Comprobación de que la API responde |
 
 Todas las rutas salvo `health`, `register` y `login` exigen `Authorization: Bearer <token>`, y cada usuario solo ve y modifica sus propios datos.
+
+## Despliegue
+
+Está publicado en tres servicios, todos con plan gratuito:
+
+| Pieza | Servicio | Dirección |
+|---|---|---|
+| Frontend | Vercel (proyecto `recetario-web`, carpeta `frontend`) | https://recetario-web-mu.vercel.app |
+| Backend (API) | Vercel (proyecto `recetario-api`, carpeta `backend`) | https://recetario-api-alpha.vercel.app/api/health/ |
+| Base de datos | Supabase (PostgreSQL), esquema propio `recetario` | — |
+
+Cada `git push` a `main` redespliega los dos proyectos de Vercel.
+
+**Variables del backend en Vercel** (Settings → Environment Variables): `SECRET_KEY` y `DATABASE_URL` (sensibles), `DEBUG=False` y `CORS_ALLOWED_ORIGINS` con la dirección del frontend. Para la IA, `AI_API_KEY` (y `AI_BASE_URL` / `AI_MODEL` si no es OpenAI). **Variable del frontend:** `VITE_API_URL` con la dirección de la API acabada en `/api`. Las variables nuevas solo se aplican en el siguiente despliegue.
+
+**Base de datos.** La app usa un rol propio (`recetario_app`) y un esquema propio (`recetario`) en lugar del esquema `public`, que es el que expone la API REST de Supabase; el esquema no está expuesto y las tablas tienen RLS activado. La conexión va por el pooler en modo sesión (la conexión directa de Supabase solo funciona por IPv6 y Vercel no la puede usar). Las migraciones **no** se ejecutan en el despliegue: se lanzan desde un equipo con `DATABASE_URL` apuntando a producción:
+
+```bash
+cd backend
+DATABASE_URL="postgres://recetario_app.<ref>:<clave>@aws-0-eu-west-2.pooler.supabase.com:5432/postgres?sslmode=require" python manage.py migrate
+```
+
+**Conexiones.** El pooler en modo sesión admite 15 clientes a la vez. Por eso cada petición abre y cierra su conexión (`CONN_MAX_AGE=0`) y los hilos que usa la búsqueda para llamar a TheMealDB **no tocan la base de datos** (un test lo comprueba): una conexión por hilo agotaba el pooler con unas pocas búsquedas simultáneas.
+
+El registro de cuentas es público y tiene un límite de 20 por hora y dirección.
 
 ## Decisiones y límites conocidos
 

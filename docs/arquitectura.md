@@ -56,5 +56,5 @@ Un ingrediente de la despensa cubre uno de la receta si uno contiene todas las p
 
 ## Pruebas
 
-- **Backend (pytest):** 157 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
+- **Backend (pytest):** 159 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
 - **Frontend (Vitest):** 38 tests de componentes (formulario de login, chip de ingrediente, tarjeta de receta, añadir ingredientes, lista de la compra), conversión de errores y utilidades.
