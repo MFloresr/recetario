@@ -1,11 +1,15 @@
 """Configuración de Django para Recetario. Todo lo sensible se lee del entorno (ver .env.example)."""
 
+import os
 from datetime import timedelta
 from pathlib import Path
 
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Vercel define VERCEL=1 tanto en el build como en ejecución
+ON_VERCEL = bool(os.environ.get("VERCEL"))
 
 env = environ.Env(
     DEBUG=(bool, False),
@@ -20,10 +24,14 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+if ON_VERCEL:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, ".vercel.app"]
+    # Vercel termina el HTTPS y reenvía la petición a la función
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # --- Aplicaciones ---
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -69,6 +77,9 @@ WSGI_APPLICATION = "config.wsgi.application"
 # PostgreSQL mediante DATABASE_URL. Sin ella se usa SQLite local para no bloquear el desarrollo.
 
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
+# Cada petición abre y cierra su conexión (valor por defecto): el pooler de Supabase en modo sesión solo admite
+# 15 clientes y las instancias de Vercel aparecen y desaparecen, así que las conexiones persistentes lo agotarían.
+DATABASES["default"]["CONN_MAX_AGE"] = 0
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -84,6 +95,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # --- CORS: el frontend es el único origen autorizado ---
 
@@ -96,7 +108,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "EXCEPTION_HANDLER": "recipes.exceptions.api_exception_handler",
-    "DEFAULT_THROTTLE_RATES": {"ai": "40/hour"},  # la IA cuesta dinero: límite por usuario
+    "DEFAULT_THROTTLE_RATES": {"ai": "40/hour", "register": "20/hour"},  # la IA cuesta dinero; el registro está abierto al público
+    "NUM_PROXIES": 1 if ON_VERCEL else None,  # la IP real viene en X-Forwarded-For
 }
 
 SIMPLE_JWT = {

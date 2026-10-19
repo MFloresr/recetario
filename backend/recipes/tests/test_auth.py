@@ -78,3 +78,11 @@ def test_las_rutas_privadas_exigen_token(anon, db, ruta):
 @pytest.mark.parametrize("ruta", ["/api/ai/suggestions/", "/api/ai/adapt-recipe/", "/api/ai/shopping-list/"])
 def test_las_rutas_de_ia_exigen_token(anon, db, ruta):
     assert anon.post(ruta, {}, format="json").status_code == 401
+
+
+def test_el_registro_tiene_limite_por_hora(anon, db):
+    for n in range(20):
+        r = anon.post("/api/auth/register/", {"email": f"u{n}@example.com", "username": f"u{n}", "password": "Contrasena-Segura-77"}, format="json")
+        assert r.status_code == 201
+    r = anon.post("/api/auth/register/", {"email": "otro@example.com", "username": "otro", "password": "Contrasena-Segura-77"}, format="json")
+    assert r.status_code == 429

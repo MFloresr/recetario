@@ -48,6 +48,8 @@ def health(request):
 class RegisterView(CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]  # el registro es público: límite por IP
+    throttle_scope = "register"
 
 
 class LoginView(TokenObtainPairView):
