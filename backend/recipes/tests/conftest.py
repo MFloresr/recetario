@@ -78,12 +78,28 @@ class FakeResponse:
 class FakeMealDB:
     """Imita filter.php, lookup.php y search.php. Cuenta las llamadas para comprobar la caché."""
 
+    ES_EN = {"pollo": "chicken", "pollo al curry": "chicken curry", "arroz": "rice"}
+
     def __init__(self):
         self.calls: list[tuple[str, dict]] = []
+        self.translation_calls: list[dict] = []
+        self.translator_mode = "ok"  # ok | quota | down
+
+    def _mymemory(self, params):
+        self.translation_calls.append(params)
+        if self.translator_mode == "down":
+            raise requests.ConnectionError()
+        if self.translator_mode == "quota":
+            return FakeResponse({"responseData": {"translatedText": "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY"}, "responseStatus": 429, "quotaFinished": True}, status_code=429)
+        texto = params["q"]
+        traducido = self.ES_EN.get(texto.lower(), texto) if params["langpair"] == "es|en" else f"ES({texto})"
+        return FakeResponse({"responseData": {"translatedText": traducido}, "responseStatus": 200})
 
     def get(self, url, params=None, timeout=None, **kwargs):
         path = url.rsplit("/", 1)[-1]
         params = params or {}
+        if "mymemory" in url:
+            return self._mymemory(params)
         self.calls.append((path, params))
         if path == "filter.php" and "i" in params:
             ingrediente = params["i"].replace("_", " ")

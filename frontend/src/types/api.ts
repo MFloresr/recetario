@@ -68,6 +68,10 @@ export interface Recipe {
   ingredients: RecipeIngredient[]
   source: string
   match?: RecipeMatch
+  /** Título en inglés, cuando la receta viene traducida. */
+  original_title?: string
+  /** Cómo se tradujo al español. `complete: false` = alguna parte se quedó en inglés. */
+  translation?: { lang: string; provider: string | null; complete: boolean }
 }
 
 export interface RecipeSummary {
@@ -80,6 +84,7 @@ export interface RecipeSummary {
   matched_ingredients: string[]
   missing_ingredients: string[]
   source: string
+  original_title?: string
 }
 
 export interface SuggestionsResponse {

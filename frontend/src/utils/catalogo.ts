@@ -64,20 +64,20 @@ export const INGREDIENTES_FRECUENTES = [
   'yogur',
 ]
 
-/** Categorías de TheMealDB para el filtro de la pantalla de inicio. */
+/** Categorías de TheMealDB para el filtro de inicio: el valor va en inglés (lo que entiende la API) y se muestra en español. */
 export const CATEGORIAS_RECETA = [
-  'Beef',
-  'Breakfast',
-  'Chicken',
-  'Dessert',
-  'Goat',
-  'Lamb',
-  'Miscellaneous',
-  'Pasta',
-  'Pork',
-  'Seafood',
-  'Side',
-  'Starter',
-  'Vegan',
-  'Vegetarian',
+  { valor: 'Beef', etiqueta: 'Ternera' },
+  { valor: 'Breakfast', etiqueta: 'Desayuno' },
+  { valor: 'Chicken', etiqueta: 'Pollo' },
+  { valor: 'Dessert', etiqueta: 'Postre' },
+  { valor: 'Goat', etiqueta: 'Cabra' },
+  { valor: 'Lamb', etiqueta: 'Cordero' },
+  { valor: 'Miscellaneous', etiqueta: 'Variado' },
+  { valor: 'Pasta', etiqueta: 'Pasta' },
+  { valor: 'Pork', etiqueta: 'Cerdo' },
+  { valor: 'Seafood', etiqueta: 'Marisco y pescado' },
+  { valor: 'Side', etiqueta: 'Guarnición' },
+  { valor: 'Starter', etiqueta: 'Entrante' },
+  { valor: 'Vegan', etiqueta: 'Vegano' },
+  { valor: 'Vegetarian', etiqueta: 'Vegetariano' },
 ]

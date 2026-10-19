@@ -112,3 +112,9 @@ AI_API_KEY = env("AI_API_KEY", default="")
 AI_MODEL = env("AI_MODEL", default="gpt-4o-mini")
 # Opcional: otra API compatible con OpenAI (Gemini, Groq, Ollama...). Vacío = api.openai.com
 AI_BASE_URL = env("AI_BASE_URL", default="")
+
+# Traducción de las recetas al español (TheMealDB solo existe en inglés).
+# auto = IA si hay clave configurada, si no MyMemory (gratuito, sin clave); también: mymemory, ai, none
+TRANSLATION_PROVIDER = env("TRANSLATION_PROVIDER", default="auto")
+# Opcional: un correo sube el cupo diario gratuito de MyMemory (de 5.000 a 50.000 caracteres)
+MYMEMORY_EMAIL = env("MYMEMORY_EMAIL", default="")

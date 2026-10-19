@@ -130,7 +130,21 @@ async function adaptar() {
         <v-chip v-if="receta.category" prepend-icon="mdi-tag-outline">{{ receta.category }}</v-chip>
         <v-chip v-if="receta.area" prepend-icon="mdi-earth">{{ receta.area }}</v-chip>
         <v-chip prepend-icon="mdi-database-outline">Fuente: TheMealDB</v-chip>
+        <v-chip v-if="receta.translation?.provider" prepend-icon="mdi-translate">
+          Traducción automática
+        </v-chip>
       </div>
+
+      <v-alert
+        v-if="receta.translation && !receta.translation.complete"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        Parte de la receta sigue en inglés porque el traductor no estaba disponible. Vuelve a
+        abrirla más tarde para verla completa.
+      </v-alert>
 
       <v-card v-if="puntuacion !== null" class="pa-4 mb-4" variant="flat" border>
         <div class="d-flex align-center ga-3">

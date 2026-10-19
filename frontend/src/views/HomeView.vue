@@ -35,7 +35,7 @@ const iaError = ref('')
 const disponibles = computed(() => pantry.items.filter((i) => i.in_pantry))
 const opcionesCategoria = [
   { title: 'Todas', value: '' },
-  ...CATEGORIAS_RECETA.map((c) => ({ title: c, value: c })),
+  ...CATEGORIAS_RECETA.map((c) => ({ title: c.etiqueta, value: c.valor })),
 ]
 const opcionesFaltantes = [
   { title: 'Sin límite', value: null },
@@ -190,7 +190,7 @@ async function sugerirConIa() {
               <v-col cols="12" sm="4">
                 <v-text-field
                   v-model="recipes.filtros.search"
-                  label="Buscar por nombre (en inglés)"
+                  label="Buscar por nombre"
                   variant="outlined"
                   density="comfortable"
                   hide-details

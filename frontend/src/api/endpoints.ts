@@ -12,6 +12,9 @@ import type {
   User,
 } from '@/types/api'
 
+/** La app se muestra en español: el backend traduce las recetas de TheMealDB (que está en inglés). */
+const IDIOMA = 'es'
+
 export interface EstadoApi {
   status: string
 }
@@ -76,7 +79,10 @@ export const shoppingApi = {
 
 export const recipesApi = {
   suggestions: async (ingredientes: string[], filtros: SuggestionFilters) => {
-    const params: Record<string, string | number> = { ingredients: ingredientes.join(',') }
+    const params: Record<string, string | number> = {
+      ingredients: ingredientes.join(','),
+      lang: IDIOMA,
+    }
     if (filtros.category) params.category = filtros.category
     if (filtros.maxMissing !== null) params.max_missing = filtros.maxMissing
     if (filtros.search.trim()) params.search = filtros.search.trim()
@@ -85,17 +91,26 @@ export const recipesApi = {
   detail: async (externalId: string, ingredientes: string[] = []) =>
     (
       await api.get<Recipe>(`/recipes/${encodeURIComponent(externalId)}/`, {
-        params: ingredientes.length ? { ingredients: ingredientes.join(',') } : {},
+        params: {
+          lang: IDIOMA,
+          ...(ingredientes.length ? { ingredients: ingredientes.join(',') } : {}),
+        },
       })
     ).data,
 }
 
 export const favoritesApi = {
-  list: async () => (await api.get<Favorite[]>('/favorites/')).data,
+  list: async () => (await api.get<Favorite[]>('/favorites/', { params: { lang: IDIOMA } })).data,
   create: async (externalId: string) =>
-    (await api.post<Favorite>('/favorites/', { external_id: externalId })).data,
+    (
+      await api.post<Favorite>(
+        '/favorites/',
+        { external_id: externalId },
+        { params: { lang: IDIOMA } },
+      )
+    ).data,
   updateNotes: async (id: number, notes: string) =>
-    (await api.patch<Favorite>(`/favorites/${id}/`, { notes })).data,
+    (await api.patch<Favorite>(`/favorites/${id}/`, { notes }, { params: { lang: IDIOMA } })).data,
   remove: async (id: number) => {
     await api.delete(`/favorites/${id}/`)
   },

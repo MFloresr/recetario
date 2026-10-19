@@ -27,6 +27,10 @@ class AIServiceError(ExternalServiceError):
     code = "ai_error"
 
 
+class TranslationError(ExternalServiceError):
+    code = "translation_error"
+
+
 def api_exception_handler(exc, context):
     if isinstance(exc, ExternalServiceError):
         return Response({"detail": exc.message, "code": exc.code}, status=exc.status_code)

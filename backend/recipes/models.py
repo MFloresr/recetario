@@ -48,6 +48,24 @@ class RecipeCache(models.Model):
         return self.title
 
 
+class TranslationCache(models.Model):
+    """Texto ya traducido. Cada texto se traduce una sola vez, sea cual sea la receta en la que aparezca."""
+
+    direction = models.CharField(max_length=10)  # «en-es» o «es-en»
+    source_hash = models.CharField(max_length=40)  # sha1 del texto original
+    source = models.TextField()
+    translated = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["direction", "source_hash"], name="unique_translation"),
+        ]
+
+    def __str__(self):
+        return f"{self.direction}: {self.source[:40]}"
+
+
 class FavoriteRecipe(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="favorites")
     recipe = models.ForeignKey(RecipeCache, on_delete=models.CASCADE, related_name="favorited_by")

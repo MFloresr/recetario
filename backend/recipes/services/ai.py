@@ -61,6 +61,10 @@ class ShoppingOutput(serializers.Serializer):
     missing = _MissingItem(many=True)
 
 
+class TranslationOutput(serializers.Serializer):
+    translations = serializers.ListField(child=serializers.CharField(allow_blank=True))
+
+
 # --- Interfaz común ---
 
 
@@ -73,6 +77,9 @@ class AIRecipeService(ABC):
 
     @abstractmethod
     def generate_shopping_list(self, recipe: dict, available_ingredients: list[str]) -> dict: ...
+
+    @abstractmethod
+    def translate(self, texts: list[str], source: str = "en", target: str = "es") -> list[str]: ...
 
 
 class OpenAICompatibleService(AIRecipeService):
@@ -163,6 +170,21 @@ class OpenAICompatibleService(AIRecipeService):
             'Formato: {"missing": [{"name", "quantity"}]}.'
         )
         return self._ask(prompt, ShoppingOutput)
+
+    def translate(self, texts: list[str], source: str = "en", target: str = "es") -> list[str]:
+        """Traduce una lista de textos manteniendo el orden y la longitud de la lista."""
+        idiomas = {"en": "inglés", "es": "español"}
+        prompt = (
+            f"Traduce del {idiomas.get(source, source)} al {idiomas.get(target, target)} estos textos de recetas de cocina. "
+            "Respeta números, unidades y el orden; usa español neutro y el imperativo en los pasos. "
+            f"Textos: {json.dumps(texts, ensure_ascii=False)}\n"
+            'Devuelve {"translations": [...]} con exactamente un elemento por cada texto, en el mismo orden.'
+        )
+        for _ in range(2):
+            resultado = self._ask(prompt, TranslationOutput)["translations"]
+            if len(resultado) == len(texts):
+                return resultado
+        raise AIServiceError("La IA no devolvió todas las traducciones.", status_code=502, code="ai_invalid_json")
 
 
 PROVIDERS = {"openai": OpenAICompatibleService}

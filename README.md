@@ -6,7 +6,7 @@ Recetario inteligente: añades los ingredientes que tienes en casa y la app te m
 
 - **Autenticación** con JWT (registro, login con correo o usuario, refresco automático del token).
 - **Despensa** agrupada por categorías, con autocompletado de ingredientes frecuentes.
-- **Búsqueda de recetas** en TheMealDB por ingredientes, ordenadas por coincidencia, con filtros (categoría, máximo de ingredientes que faltan, nombre).
+- **Búsqueda de recetas** en TheMealDB por ingredientes, ordenadas por coincidencia, con filtros (categoría, máximo de ingredientes que faltan, nombre). **Todo se muestra en español**: el backend traduce las recetas (ver «Traducción»).
 - **Detalle de receta** con indicador de coincidencia con tu despensa y los ingredientes que te faltan.
 - **Lista de la compra** agrupada por categoría; desde una receta se añaden de golpe los ingredientes que faltan.
 - **Favoritos** con notas personales.
@@ -45,7 +45,7 @@ python manage.py runserver
 
 La API queda en <http://localhost:8000/api/>. Comprobación rápida: <http://localhost:8000/api/health/> responde `{"status":"ok"}`.
 
-Tests (102):
+Tests (134):
 
 ```bash
 cd backend
@@ -82,6 +82,8 @@ Otros comandos: `npm run test` (Vitest, 32 tests), `npm run lint`, `npm run form
 | `AI_API_KEY` | Clave del proveedor de IA. Solo en el backend. Vacía = la IA queda desactivada. |
 | `AI_MODEL` | Modelo a usar. |
 | `AI_BASE_URL` | Opcional: URL base de otra API compatible con OpenAI. Vacío = api.openai.com. |
+| `TRANSLATION_PROVIDER` | `auto` (IA si hay clave, si no MyMemory), `mymemory`, `ai` o `none`. |
+| `MYMEMORY_EMAIL` | Opcional: tu correo sube el cupo diario gratuito de MyMemory de 5.000 a 50.000 caracteres. |
 
 **`frontend/.env`**:
 
@@ -90,6 +92,17 @@ Otros comandos: `npm run test` (Vitest, 32 tests), `npm run lint`, `npm run form
 | `VITE_API_URL` | URL de la API de Django (por defecto `http://localhost:8000/api`). |
 
 Los archivos `.env` no se suben a Git.
+
+### Traducción
+
+TheMealDB solo existe en inglés, así que el frontend pide siempre `?lang=es` y el backend devuelve las recetas en español:
+
+- **Con tablas (sin traductor):** categorías, países, nombres de ingredientes frecuentes y medidas (`1 tblsp` → `1 cda.`). Está en `backend/recipes/spanish.py`.
+- **Con traductor automático:** títulos, instrucciones e ingredientes poco comunes. Por defecto usa **MyMemory**, gratuito y sin clave (cupo diario limitado; pon tu correo en `MYMEMORY_EMAIL` para ampliarlo). Si configuras una IA (`AI_API_KEY`), se usa ella, con mejor calidad.
+- **Caché:** cada texto se traduce una sola vez y se guarda en la tabla `TranslationCache`; la segunda vez que alguien ve la receta es instantáneo.
+- **Si el traductor falla o se agota el cupo**, la app sigue funcionando: lo que no se pudo traducir queda en inglés y la receta lo avisa.
+- La búsqueda por nombre también acepta español («pollo al curry»): se traduce al inglés antes de consultar TheMealDB.
+- Sin `lang`, la API devuelve los datos originales de TheMealDB en inglés.
 
 ### Usar otro proveedor de IA
 
@@ -125,9 +138,9 @@ Todas las rutas salvo `health`, `register` y `login` exigen `Authorization: Bear
 
 ## Decisiones y límites conocidos
 
-- **Idioma de las recetas.** TheMealDB está en inglés y el usuario escribe en español. El backend traduce los ingredientes con una tabla de ~120 ingredientes comunes (`backend/recipes/catalog.py`); lo que no esté en la tabla se envía tal cual (si escribes «chicken» funciona). Las recetas y sus ingredientes se muestran en inglés; en la lista de la compra los nombres conocidos se guardan en español. Ampliar la tabla es lo que más mejora los resultados.
+- **Idioma.** Lo que escribe el usuario se traduce al inglés con una tabla de ~120 ingredientes comunes (`backend/recipes/catalog.py`); lo que no esté en la tabla se envía tal cual (si escribes «chicken» funciona). Ampliar esa tabla es lo que más mejora los resultados. Las traducciones automáticas son de calidad razonable pero no perfecta (por ejemplo, el imperativo formal en los pasos).
 - **El agua cuenta siempre como disponible** y no entra en el porcentaje.
 - **Caché.** Las recetas solo se guardan en la base de datos (`RecipeCache`) al abrirlas en detalle o marcarlas como favoritas. Las búsquedas usan una caché en memoria de 1 hora.
 - **Tiempo estimado.** TheMealDB no lo ofrece, así que las tarjetas de receta no lo muestran; sí lo devuelve la IA en sus sugerencias.
-- **Extras sobre lo especificado:** `GET /api/health/`, `PATCH /api/favorites/{id}/` (editar notas), el parámetro opcional `?ingredients=` del detalle y `AI_BASE_URL`.
+- **Extras sobre lo especificado:** `GET /api/health/`, `PATCH /api/favorites/{id}/` (editar notas), el parámetro opcional `?ingredients=` del detalle, el parámetro `?lang=es`, la tabla `TranslationCache` y las variables `AI_BASE_URL`, `TRANSLATION_PROVIDER` y `MYMEMORY_EMAIL`.
 - **Sin Docker, PWA, notificaciones, pagos ni OCR** en esta primera versión.

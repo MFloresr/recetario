@@ -26,9 +26,12 @@ from .serializers import (
     UserSerializer,
 )
 from .services import ai as ai_service
+from .catalog import to_english
+from .services.localization import localize_recipe, localize_summaries
 from .services.matching import calculate_match, with_spanish_names
 from .services.recipes import get_recipe, save_recipe
 from .services.suggestions import build_suggestions, parse_ingredients
+from .services.translation import translate_strings
 
 
 @api_view(["GET"])
@@ -118,12 +121,18 @@ class RecipeSuggestionsView(APIView):
         pantry = parse_ingredients(datos["ingredients"])
         if not pantry and not datos["search"].strip():
             raise ValidationError({"ingredients": "Indica al menos un ingrediente."})
+        busqueda = datos["search"].strip()
+        if busqueda and datos["lang"] == "es":
+            # TheMealDB busca por título en inglés: la búsqueda en español se traduce primero
+            traducida = translate_strings([busqueda], "es", "en").get(busqueda)
+            busqueda = traducida or to_english(busqueda)
         resultado = build_suggestions(
             pantry,
             category=datos["category"],
             max_missing=datos["max_missing"],
-            search=datos["search"].strip(),
+            search=busqueda,
         )
+        resultado["results"] = localize_summaries(resultado["results"], datos["lang"])
         return Response(resultado)
 
 
@@ -134,11 +143,16 @@ class RecipeDetailView(APIView):
         receta = get_recipe(external_id, save=True)
         if receta is None:
             raise NotFound("No se encontró la receta.")
-        respuesta = dict(receta)
         pantry = parse_ingredients(request.query_params.get("ingredients", ""))
+        coincidencia = None
         if pantry:
             coincidencia = calculate_match(pantry, receta["ingredients"])
             coincidencia["missing"] = with_spanish_names(receta["ingredients"], coincidencia["missing_ingredients"])
+        lang = request.query_params.get("lang", "")
+        if lang:
+            return Response(localize_recipe(receta, lang, coincidencia))
+        respuesta = dict(receta)
+        if coincidencia is not None:
             respuesta["match"] = coincidencia
         return Response(respuesta)
 
@@ -167,7 +181,7 @@ class FavoriteViewSet(
                 )
         except IntegrityError:
             raise ValidationError({"detail": "Esta receta ya está en tus favoritos."}) from None
-        return Response(FavoriteSerializer(favorito).data, status=status.HTTP_201_CREATED)
+        return Response(FavoriteSerializer(favorito, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
 # --- IA ---

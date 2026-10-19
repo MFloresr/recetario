@@ -21,13 +21,15 @@ services/
    ├── recipes.py      caché en base de datos (detalle y favoritos) y en memoria (búsquedas)
    ├── matching.py     cálculo de coincidencia entre despensa y receta
    ├── suggestions.py  orquesta la búsqueda por ingredientes
+   ├── translation.py  traducción con caché en base de datos (MyMemory o IA)
+   ├── localization.py pasa resultados y recetas al español (?lang=es)
    └── ai.py           AIRecipeService (interfaz) + proveedor compatible con OpenAI
    │
    ▼
 models.py           Ingredient, RecipeCache, FavoriteRecipe, ShoppingListItem
 ```
 
-Módulos auxiliares: `normalization.py` (nombres sin tildes ni mayúsculas), `catalog.py` (tabla es↔en de ingredientes, categorías) y `exceptions.py` (errores externos y manejador global de DRF).
+Módulos auxiliares: `spanish.py` (categorías, países, ingredientes y medidas en español), `normalization.py` (nombres sin tildes ni mayúsculas), `catalog.py` (tabla es↔en de ingredientes, categorías) y `exceptions.py` (errores externos y manejador global de DRF).
 
 ### Cómo se calculan las sugerencias
 
@@ -53,5 +55,5 @@ Un ingrediente de la despensa cubre uno de la receta si uno contiene todas las p
 
 ## Pruebas
 
-- **Backend (pytest):** 102 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
+- **Backend (pytest):** 134 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
 - **Frontend (Vitest):** 32 tests de componentes (formulario de login, chip de ingrediente, tarjeta de receta, añadir ingredientes, lista de la compra), conversión de errores y utilidades.

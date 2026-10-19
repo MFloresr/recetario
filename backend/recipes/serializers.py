@@ -5,6 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
+from .services.localization import localize_recipe
 
 User = get_user_model()
 
@@ -127,12 +128,22 @@ class RecipeCacheSerializer(serializers.ModelSerializer):
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
+    """Con `?lang=es` en la petición, la receta se devuelve traducida al español."""
+
     recipe = RecipeCacheSerializer(read_only=True)
 
     class Meta:
         model = FavoriteRecipe
         fields = ["id", "recipe", "notes", "created_at"]
         read_only_fields = ["id", "recipe", "created_at"]
+
+    def to_representation(self, instance):
+        datos = super().to_representation(instance)
+        peticion = self.context.get("request")
+        lang = peticion.query_params.get("lang", "") if peticion is not None else ""
+        if lang:
+            datos["recipe"] = localize_recipe(dict(datos["recipe"]), lang)
+        return datos
 
 
 class FavoriteCreateSerializer(serializers.Serializer):
@@ -145,6 +156,7 @@ class SuggestionsQuerySerializer(serializers.Serializer):
     category = serializers.CharField(required=False, allow_blank=True, default="")
     max_missing = serializers.IntegerField(required=False, min_value=0, allow_null=True, default=None)
     search = serializers.CharField(required=False, allow_blank=True, default="")
+    lang = serializers.ChoiceField(choices=["es"], required=False, allow_blank=True, default="")
 
 
 # --- IA: entradas ---
