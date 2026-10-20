@@ -4,7 +4,8 @@ Se prueban varias fuentes, de la más precisa a la más amplia, y se devuelve la
 
 1. **Wikipedia** (libre, sin clave): la foto principal del artículo del plato.
 2. **Pexels** (gratuita, con clave opcional `PEXELS_API_KEY`): fotos de comida de calidad, con crédito al autor.
-3. **Wikimedia Commons** (libre, sin clave): fotos cuyo nombre de archivo coincide con el plato.
+3. **Openverse** (fotos con licencia libre, sin clave): solo se acepta una foto si su título nombra todo el plato.
+4. **Wikimedia Commons** (libre, sin clave): fotos cuyo nombre de archivo coincide con el plato.
 
 Es mejor no mostrar ninguna foto que mostrar la de otro plato: Wikipedia y Commons solo se aceptan si el nombre
 coincide. Siempre es una foto de muestra, y cada una enlaza a su origen (autoría y licencia).
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 WIKIPEDIA_API = "https://es.wikipedia.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 PEXELS_API = "https://api.pexels.com/v1/search"
+OPENVERSE_API = "https://api.openverse.org/v1/images/"
 TIMEOUT = 6
 CACHE_TTL = 60 * 60 * 24 * 7
 HEADERS = {"User-Agent": "Recetario/1.0 (proyecto personal; https://es.wikipedia.org/wiki/Wikipedia:Bot)"}
@@ -97,6 +99,27 @@ def _from_pexels(consulta: str, session) -> dict | None:
     return {"url": url, "credit": f"{foto.get('photographer', 'Pexels')} (Pexels)", "page": foto.get("url", "")}
 
 
+def _from_openverse(consulta: str, session) -> dict | None:
+    """Foto con licencia libre (casi siempre de Flickr). Se acepta solo si el título contiene todas las palabras del plato."""
+    def palabras_de(texto: str) -> set[str]:  # sin signos de puntuación: «pudding:» cuenta como «pudding»
+        return {t for t in re.findall(r"[a-z0-9]+", normalize_name(texto)) if t not in RELLENO}
+
+    palabras = palabras_de(consulta)
+    if not palabras:
+        return None
+    respuesta = _get(session, OPENVERSE_API, params={"q": consulta, "page_size": 8, "mature": "false"})
+    for foto in respuesta.json().get("results") or []:
+        if palabras <= palabras_de(foto.get("title", "")) and foto.get("thumbnail"):
+            licencia = (foto.get("license") or "").upper()
+            autor = foto.get("creator") or foto.get("source") or "Openverse"
+            return {
+                "url": foto["thumbnail"],
+                "credit": f"{autor} (CC {licencia})" if licencia else f"{autor} (Openverse)",
+                "page": foto.get("foreign_landing_url") or foto.get("url", ""),
+            }
+    return None
+
+
 def _from_commons(consulta: str, session) -> dict | None:
     if not consulta:
         return None
@@ -135,6 +158,7 @@ def find_dish_image(title: str, photo_query: str = "", photo_query_en: str = "",
         lambda: _from_wikipedia(consulta, session),
         lambda: _from_wikipedia(title, session) if normalize_name(title) != normalize_name(consulta) else None,
         lambda: _from_pexels(photo_query_en or consulta, session),
+        lambda: _from_openverse(photo_query_en or "", session),
         lambda: _from_commons(consulta, session),
     ]
     fallo = False

@@ -1,4 +1,4 @@
-"""Varias fuentes de fotos: Wikipedia → Pexels → Wikimedia Commons."""
+"""Varias fuentes de fotos: Wikipedia → Pexels → Openverse → Wikimedia Commons."""
 
 import requests
 
@@ -89,3 +89,39 @@ def test_si_de_verdad_no_hay_foto_se_recuerda_para_no_repetir_la_busqueda(wikipe
     llamadas = len(wikipedia.calls)
     assert find_dish_image("Plato inventado") is None
     assert len(wikipedia.calls) == llamadas
+
+
+def foto_ov(titulo, licencia="by-sa", creador="Marta"):
+    return {"title": titulo, "thumbnail": "https://api.openverse.org/v1/images/abc/thumb/", "license": licencia, "creator": creador, "foreign_landing_url": "https://www.flickr.com/photos/1"}
+
+
+def test_sin_wikipedia_ni_pexels_usa_openverse_con_su_autoria(wikipedia, settings):
+    settings.PEXELS_API_KEY = ""
+    wikipedia.openverse = [foto_ov("Rice pudding: the finished product")]
+    foto = find_dish_image("Arroz con leche", photo_query="arroz con leche", photo_query_en="rice pudding")
+    assert foto == {"url": "https://api.openverse.org/v1/images/abc/thumb/", "credit": "Marta (CC BY-SA)", "page": "https://www.flickr.com/photos/1"}
+    assert wikipedia.openverse_calls[0]["q"] == "rice pudding"
+
+
+def test_openverse_rechaza_fotos_de_otro_plato(wikipedia):
+    wikipedia.openverse = [foto_ov("Pudding"), foto_ov("Indian Rice"), foto_ov("Pumpkin tart")]
+    assert find_dish_image("Arroz con leche", photo_query_en="rice pudding") is None
+
+
+def test_openverse_elige_la_primera_que_nombra_todo_el_plato(wikipedia):
+    wikipedia.openverse = [foto_ov("Rice"), foto_ov("Indian Rice Pudding", creador="Luis")]
+    assert find_dish_image("Arroz con leche", photo_query_en="rice pudding")["credit"].startswith("Luis")
+
+
+def test_sin_nombre_en_ingles_no_se_llama_a_openverse(wikipedia):
+    wikipedia.openverse = [foto_ov("Rice pudding")]
+    find_dish_image("Plato raro")
+    assert wikipedia.openverse_calls == []
+
+
+def test_pexels_gana_a_openverse(wikipedia, settings):
+    settings.PEXELS_API_KEY = "k"
+    wikipedia.pexels = [{"src": {"large": "https://img/p.jpg"}, "photographer": "J", "url": "u"}]
+    wikipedia.openverse = [foto_ov("Rice pudding")]
+    assert find_dish_image("Arroz con leche", photo_query_en="rice pudding")["url"] == "https://img/p.jpg"
+    assert wikipedia.openverse_calls == []
