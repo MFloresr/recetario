@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay, useTheme } from 'vuetify'
+import DeleteAccountDialog from '@/components/DeleteAccountDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePantryStore } from '@/stores/pantry'
 import { useRecipeStore } from '@/stores/recipe'
@@ -17,6 +18,7 @@ const theme = useTheme()
 const router = useRouter()
 const route = useRoute()
 const { mdAndUp } = useDisplay()
+const borrandoCuenta = ref(false)
 
 const enlaces = [
   {
@@ -53,6 +55,14 @@ function salir() {
   void router.replace({ name: 'login' })
 }
 
+function cuentaEliminada() {
+  pantry.vaciar()
+  recipes.vaciar()
+  shopping.vaciar()
+  ui.mostrarAviso('Tu cuenta y tus datos se han eliminado.', 'success')
+  void router.replace({ name: 'login' })
+}
+
 function sesionCaducada() {
   pantry.vaciar()
   recipes.vaciar()
@@ -86,7 +96,18 @@ onBeforeUnmount(() => window.removeEventListener('recetario:sesion-caducada', se
         <v-list>
           <v-list-item :title="auth.user?.username ?? 'Mi cuenta'" :subtitle="auth.user?.email" />
           <v-divider />
+          <v-list-item
+            prepend-icon="mdi-shield-lock-outline"
+            title="Privacidad"
+            :to="{ name: 'privacy' }"
+          />
           <v-list-item prepend-icon="mdi-logout" title="Cerrar sesión" @click="salir" />
+          <v-list-item
+            prepend-icon="mdi-account-remove-outline"
+            title="Eliminar mi cuenta"
+            base-color="error"
+            @click="borrandoCuenta = true"
+          />
         </v-list>
       </v-menu>
       <v-progress-linear
@@ -134,6 +155,8 @@ onBeforeUnmount(() => window.removeEventListener('recetario:sesion-caducada', se
         <span>{{ e.texto }}</span>
       </v-btn>
     </v-bottom-navigation>
+
+    <DeleteAccountDialog v-model="borrandoCuenta" @eliminada="cuentaEliminada" />
 
     <v-snackbar
       v-model="ui.aviso.visible"

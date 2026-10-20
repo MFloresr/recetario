@@ -86,3 +86,47 @@ def test_el_registro_tiene_limite_por_hora(anon, db):
         assert r.status_code == 201
     r = anon.post("/api/auth/register/", {"email": "otro@example.com", "username": "otro", "password": "Contrasena-Segura-77"}, format="json")
     assert r.status_code == 429
+
+
+# --- Borrar la cuenta ---
+
+
+def test_borrar_cuenta_elimina_al_usuario_y_todos_sus_datos(client, user, other_user, fake_mealdb):
+    from django.contrib.auth import get_user_model
+
+    from recipes.models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
+
+    client.post("/api/ingredients/", {"name": "Arroz"}, format="json")
+    client.post("/api/shopping-list/", {"name": "Leche"}, format="json")
+    client.post("/api/favorites/", {"external_id": "1"}, format="json")
+    Ingredient.objects.create(user=other_user, name="Ajeno")
+
+    r = client.delete("/api/auth/me/", {"password": "Contrasena-Segura-91"}, format="json")
+    assert r.status_code == 204
+    assert not get_user_model().objects.filter(pk=user.pk).exists()
+    assert not Ingredient.objects.filter(user_id=user.pk).exists()
+    assert not ShoppingListItem.objects.filter(user_id=user.pk).exists()
+    assert not FavoriteRecipe.objects.filter(user_id=user.pk).exists()
+    # lo de otras personas y la caché compartida de recetas no se tocan
+    assert Ingredient.objects.filter(user=other_user, name="Ajeno").exists()
+    assert RecipeCache.objects.filter(external_id="1").exists()
+
+
+def test_borrar_cuenta_exige_la_contrasena_correcta(client, user):
+    r = client.delete("/api/auth/me/", {"password": "otra-cosa"}, format="json")
+    assert r.status_code == 400 and "password" in r.json()
+    assert client.delete("/api/auth/me/", {}, format="json").status_code == 400
+    assert client.get("/api/auth/me/").status_code == 200  # sigue existiendo
+
+
+def test_borrar_cuenta_exige_sesion(anon, user):
+    assert anon.delete("/api/auth/me/", {"password": "Contrasena-Segura-91"}, format="json").status_code == 401
+
+
+def test_tras_borrar_la_cuenta_el_token_deja_de_valer(anon, user):
+    tokens = anon.post("/api/auth/login/", {"username": "ana", "password": "Contrasena-Segura-91"}, format="json").json()
+    anon.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+    assert anon.delete("/api/auth/me/", {"password": "Contrasena-Segura-91"}, format="json").status_code == 204
+    assert anon.get("/api/auth/me/").status_code == 401
+    anon.credentials()
+    assert anon.post("/api/auth/login/", {"username": "ana", "password": "Contrasena-Segura-91"}, format="json").status_code == 401

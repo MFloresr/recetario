@@ -19,6 +19,7 @@ export async function montar(
       { path: '/', name: 'home', component: Vacia },
       { path: '/login', name: 'login', component: Vacia },
       { path: '/register', name: 'register', component: Vacia },
+      { path: '/privacy', name: 'privacy', component: Vacia },
       { path: '/recipes/:externalId', name: 'recipe', component: Vacia },
     ],
   })

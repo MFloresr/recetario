@@ -13,6 +13,7 @@ const email = ref('')
 const username = ref('')
 const password = ref('')
 const mostrarPassword = ref(false)
+const aceptado = ref(false)
 const error = ref('')
 const errores = ref<Record<string, string>>({})
 
@@ -29,6 +30,10 @@ const reglas = {
 }
 
 async function enviar() {
+  if (!aceptado.value) {
+    error.value = 'Para crear la cuenta tienes que aceptar el aviso de privacidad.'
+    return
+  }
   error.value = ''
   errores.value = {}
   try {
@@ -103,6 +108,23 @@ async function enviar() {
               />
             </template>
           </v-text-field>
+          <v-checkbox
+            v-model="aceptado"
+            density="compact"
+            hide-details
+            class="mb-3"
+            :disabled="auth.cargando"
+          >
+            <template #label>
+              <span>
+                He leído el
+                <router-link :to="{ name: 'privacy' }" target="_blank" @click.stop
+                  >aviso de privacidad</router-link
+                >
+                y lo acepto
+              </span>
+            </template>
+          </v-checkbox>
           <v-btn
             type="submit"
             color="primary"

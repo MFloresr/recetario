@@ -48,6 +48,17 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "email", "username"]
 
 
+class DeleteAccountSerializer(serializers.Serializer):
+    """Para borrar la cuenta hay que repetir la contraseña (un token robado no basta)."""
+
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    def validate_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("La contraseña no es correcta.")
+        return value
+
+
 class LoginSerializer(TokenObtainPairSerializer):
     """Acepta `email` o `username` junto con la contraseña."""
 

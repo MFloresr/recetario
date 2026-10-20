@@ -44,6 +44,10 @@ export const authApi = {
     return (await api.post<Tokens>('/auth/login/', cuerpo)).data
   },
   me: async () => (await api.get<User>('/auth/me/')).data,
+  /** Borra la cuenta y todos sus datos; exige la contraseña. */
+  deleteAccount: async (password: string) => {
+    await api.delete('/auth/me/', { data: { password } })
+  },
 }
 
 // --- Despensa ---

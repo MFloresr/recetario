@@ -50,6 +50,16 @@ export const useAuthStore = defineStore('auth', () => {
     await iniciarSesion(datos.username, datos.password)
   }
 
+  /** Borra la cuenta (y todos sus datos) tras confirmar la contraseña y cierra la sesión. */
+  async function eliminarCuenta(password: string) {
+    try {
+      await authApi.deleteAccount(password)
+    } catch (e) {
+      throw aApiError(e)
+    }
+    cerrarSesion()
+  }
+
   /** Recupera el usuario al arrancar la app si hay tokens guardados. */
   async function cargarUsuario() {
     if (!hayToken.value || user.value) return
@@ -60,5 +70,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, autenticado, cargando, iniciarSesion, registrar, cerrarSesion, cargarUsuario }
+  return {
+    user,
+    autenticado,
+    cargando,
+    iniciarSesion,
+    registrar,
+    eliminarCuenta,
+    cerrarSesion,
+    cargarUsuario,
+  }
 })

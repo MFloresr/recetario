@@ -57,6 +57,12 @@ const router = createRouter({
       component: () => import('@/views/RecipeDetailView.vue'),
       meta: { titulo: 'Receta', privada: true },
     },
+    {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('@/views/PrivacyView.vue'),
+      meta: { titulo: 'Aviso de privacidad' },
+    },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

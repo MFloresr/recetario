@@ -16,6 +16,7 @@ from .normalization import normalize_name
 from .serializers import (
     AIRecipeInputSerializer,
     AISuggestionsInputSerializer,
+    DeleteAccountSerializer,
     FavoriteCreateSerializer,
     FavoriteSerializer,
     IngredientSerializer,
@@ -59,6 +60,13 @@ class LoginView(TokenObtainPairView):
 class MeView(APIView):
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+    def delete(self, request):
+        """Borra la cuenta y todos sus datos (despensa, lista de la compra y favoritos) tras confirmar la contraseña."""
+        entrada = DeleteAccountSerializer(data=request.data, context={"request": request})
+        entrada.is_valid(raise_exception=True)
+        request.user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # --- Despensa ---

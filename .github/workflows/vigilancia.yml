@@ -1,0 +1,19 @@
+name: Vigilancia
+
+# Cada hora comprueba que la web y la API responden. Si algo falla, el workflow falla y GitHub te avisa por correo.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  comprobar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: La web responde
+        run: curl --fail --silent --show-error --max-time 30 --retry 2 --retry-delay 10 https://recetario-web-mu.vercel.app/ > /dev/null
+      - name: La API responde
+        run: |
+          respuesta=$(curl --fail --silent --show-error --max-time 40 --retry 2 --retry-delay 10 https://recetario-api-alpha.vercel.app/api/health/)
+          echo "$respuesta"
+          echo "$respuesta" | grep -q '"status":"ok"'
