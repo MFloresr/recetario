@@ -152,7 +152,7 @@ export const favoritesApi = {
 // --- IA ---
 
 export const aiApi = {
-  suggestions: async (ingredientes: string[], tipoComida = '', consulta = '', maxResults = 5) =>
+  suggestions: async (ingredientes: string[], tipoComida = '', consulta = '', maxResults = 3) =>
     (
       await api.post<{ suggestions: AiSuggestion[] }>(
         '/ai/suggestions/',
