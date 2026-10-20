@@ -10,7 +10,8 @@ Recetario inteligente: añades los ingredientes que tienes en casa y la app te m
 - **Detalle de receta** con indicador de coincidencia con tu despensa y los ingredientes que te faltan.
 - **Lista de la compra** agrupada por categoría; desde una receta se añaden de golpe los ingredientes que faltan.
 - **Favoritos** con notas personales.
-- **IA opcional.** «Sugiéreme algo con IA» propone recetas completas: tipo de comida (desayuno, almuerzo, merienda, cena, postre, batido, snack…), tiempo, dificultad, raciones, ingredientes con cantidades, pasos y una foto orientativa cuando existe. También adapta una receta a tu despensa. Si no está configurada o falla, la app sigue funcionando con la búsqueda normal.
+- **Tu recetario.** Guarda en favoritos cualquier receta, también las que propone la IA, con tus notas, para volver a verlas cuando quieras (ingredientes, pasos, tiempo y dificultad incluidos).
+- **IA opcional.** «Sugiéreme algo con IA» propone recetas completas a partir de tus ingredientes o de una receta concreta que busques («lasaña», «tarta de queso»): tipo de comida (desayuno, almuerzo, merienda, cena, postre, batido, snack…), tiempo, dificultad, raciones, ingredientes con cantidades, pasos y una foto orientativa cuando existe. También adapta una receta a tu despensa. Si no está configurada o falla, la app sigue funcionando con la búsqueda normal.
 - Interfaz **Material Design 3** (Vuetify), responsive, con tema claro y oscuro.
 
 ## Estructura
@@ -45,7 +46,7 @@ python manage.py runserver
 
 La API queda en <http://localhost:8000/api/>. Comprobación rápida: <http://localhost:8000/api/health/> responde `{"status":"ok"}`.
 
-Tests (167):
+Tests (189):
 
 ```bash
 cd backend
@@ -65,7 +66,7 @@ npm run dev
 
 La app queda en <http://localhost:5173>. Crea una cuenta en «Crear cuenta» y empieza por añadir ingredientes.
 
-Otros comandos: `npm run test` (Vitest, 47 tests), `npm run lint`, `npm run format`, `npm run build`.
+Otros comandos: `npm run test` (Vitest, 54 tests), `npm run lint`, `npm run format`, `npm run build`.
 
 ## Variables de entorno
 
@@ -136,8 +137,8 @@ Para un proveedor con otro protocolo se escribe otra subclase de `AIRecipeServic
 | POST | `/api/shopping-list/clear-bought/` | Eliminar los comprados |
 | GET | `/api/recipes/suggestions/?ingredients=pollo,arroz` | Sugerencias por ingredientes |
 | GET | `/api/recipes/{external_id}/` | Detalle (con `?ingredients=` añade la coincidencia) |
-| GET POST PATCH DELETE | `/api/favorites/` | Favoritos |
-| POST | `/api/ai/suggestions/` (acepta `meal_type`) · `/api/ai/adapt-recipe/` · `/api/ai/shopping-list/` | IA |
+| GET POST PATCH DELETE | `/api/favorites/` | Favoritos. `POST` acepta `external_id` (TheMealDB) o `recipe` (receta de la IA) |
+| POST | `/api/ai/suggestions/` (acepta `meal_type` y `query`) · `/api/ai/adapt-recipe/` · `/api/ai/shopping-list/` | IA |
 | GET | `/api/health/` | Comprobación de que la API responde |
 
 Todas las rutas salvo `health`, `register` y `login` exigen `Authorization: Bearer <token>`, y cada usuario solo ve y modifica sus propios datos.

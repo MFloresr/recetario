@@ -120,13 +120,18 @@ async function adaptar() {
 
     <article v-else>
       <v-img
+        v-if="receta.image"
         :src="receta.image"
         :alt="receta.title"
         height="280"
         cover
         rounded="xl"
-        class="mb-4 bg-surface-variant"
+        class="mb-4 foto-receta"
       />
+      <p v-if="receta.image_page && receta.image" class="text-caption text-medium-emphasis mb-4">
+        Foto orientativa:
+        <a :href="receta.image_page" target="_blank" rel="noopener">{{ receta.image_credit }}</a>
+      </p>
 
       <h1 class="text-h4 font-weight-bold mb-2">{{ receta.title }}</h1>
       <div class="d-flex flex-wrap ga-2 mb-4">

@@ -114,7 +114,7 @@ function minutos(m: number): string {
               :alt="`Foto orientativa de ${s.title}`"
               height="180"
               cover
-              class="bg-surface-variant"
+              class="foto-receta"
             />
 
             <v-card-item>

@@ -28,7 +28,7 @@ const origen = computed(() =>
 
 <template>
   <v-card class="recipe-card d-flex flex-column h-100" variant="elevated" elevation="1">
-    <v-img :src="receta.image" :alt="receta.title" height="170" cover class="bg-surface-variant">
+    <v-img :src="receta.image" :alt="receta.title" height="170" cover class="foto-receta">
       <template #placeholder>
         <div class="d-flex align-center justify-center fill-height">
           <v-icon icon="mdi-silverware-fork-knife" size="40" />

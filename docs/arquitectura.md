@@ -54,7 +54,11 @@ Un ingrediente de la despensa cubre uno de la receta si uno contiene todas las p
 - **API:** `api/client.ts` (Axios con JWT, refresco automático con una sola renovación simultánea y conversión de errores a mensajes legibles) y `api/endpoints.ts` (funciones tipadas por recurso).
 - **Navegación:** barra inferior en móvil y menú lateral en escritorio; rutas privadas protegidas por un guard.
 
+## Recetas de la IA guardadas
+
+Una receta de la IA que el usuario guarda se almacena en `RecipeCache` con `source="ai"` y un identificador propio, `ai-<usuario>-<huella>`: así nadie puede pisar ni ver la receta de otro (el detalle devuelve 404 a los demás). Se borra al quitarla de favoritos y al borrar la cuenta. Ya está en español, así que no pasa por el traductor, y su coincidencia con la despensa se calcula en español.
+
 ## Pruebas
 
-- **Backend (pytest):** 167 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
-- **Frontend (Vitest):** 47 tests de componentes (formulario de login, chip de ingrediente, tarjeta de receta, añadir ingredientes, lista de la compra), conversión de errores y utilidades.
+- **Backend (pytest):** 189 tests con TheMealDB y la IA simulados. Cubren autenticación, aislamiento entre usuarios, normalización, cálculo de coincidencia, sugerencias, detalle, favoritos, lista de la compra, errores de TheMealDB y de la IA.
+- **Frontend (Vitest):** 54 tests de componentes (formulario de login, chip de ingrediente, tarjeta de receta, añadir ingredientes, lista de la compra), conversión de errores y utilidades.

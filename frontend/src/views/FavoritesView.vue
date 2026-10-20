@@ -89,12 +89,16 @@ async function quitar() {
       <v-col v-for="f in recipes.favoritos" :key="f.id" cols="12" sm="6" md="4">
         <v-card class="favorite-card d-flex flex-column h-100" variant="elevated" elevation="1">
           <v-img
+            v-if="f.recipe.image"
             :src="f.recipe.image"
             :alt="f.recipe.title"
             height="150"
             cover
-            class="bg-surface-variant"
+            class="foto-receta"
           />
+          <div v-else class="foto-receta d-flex align-center justify-center" style="height: 90px">
+            <v-icon icon="mdi-chef-hat" size="36" color="primary" aria-hidden="true" />
+          </div>
           <v-card-item>
             <v-card-title class="text-wrap">{{ f.recipe.title }}</v-card-title>
             <v-card-subtitle>{{

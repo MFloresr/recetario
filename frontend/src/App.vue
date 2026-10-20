@@ -169,3 +169,10 @@ onBeforeUnmount(() => window.removeEventListener('recetario:sesion-caducada', se
     </v-snackbar>
   </v-app>
 </template>
+
+<style>
+/* Fondo suave mientras carga una foto o cuando una receta no la tiene */
+.foto-receta {
+  background-color: rgba(var(--v-theme-on-surface), 0.06);
+}
+</style>
