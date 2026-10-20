@@ -78,6 +78,10 @@ export interface Recipe {
   servings?: number | null
   image_credit?: string
   image_page?: string
+  steps?: AiStep[]
+  tips?: string[]
+  prep_minutes?: number | null
+  cook_minutes?: number | null
   /** Cómo se tradujo al español. `complete: false` = alguna parte se quedó en inglés. */
   translation?: { lang: string; provider: string | null; complete: boolean }
 }
@@ -114,6 +118,12 @@ export interface Favorite {
   created_at: string
 }
 
+/** Un paso de una receta de la IA, con el tiempo de espera si lo tiene (cocción, horno, reposo). */
+export interface AiStep {
+  text: string
+  minutes: number | null
+}
+
 export interface AiSuggestion {
   title: string
   description: string
@@ -122,9 +132,14 @@ export interface AiSuggestion {
   ingredients: { name: string; quantity: string }[]
   ingredients_used: string[]
   missing_ingredients: string[]
-  steps: string[]
+  steps: AiStep[]
+  tips: string[]
   estimated_minutes: number | null
+  prep_minutes: number | null
+  cook_minutes: number | null
   difficulty: string
+  photo_query?: string
+  photo_query_en?: string
   /** Foto orientativa de Wikipedia; null si no hay un artículo fiable sobre el plato. */
   image: { url: string; credit: string; page: string } | null
 }

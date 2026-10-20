@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import AdaptRecipeDialog from '@/components/AdaptRecipeDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import StepTimer from '@/components/StepTimer.vue'
 import { useFavorito } from '@/composables/useFavorito'
 import { usePantryStore } from '@/stores/pantry'
 import { useRecipeStore } from '@/stores/recipe'
@@ -41,6 +42,12 @@ const esFavorita = computed(() =>
   receta.value ? recipes.esFavorito(receta.value.external_id) : false,
 )
 const tipo = computed(() => tipoComida(receta.value?.meal_type))
+/** Pasos con su tiempo: los de la IA ya lo traen; los de TheMealDB son solo texto. */
+const pasosDetallados = computed(() =>
+  receta.value?.steps?.length
+    ? receta.value.steps
+    : pasos.value.map((text) => ({ text, minutes: null })),
+)
 const esIa = computed(() => receta.value?.source === 'ai')
 const pasos = computed(() => pasosDeInstrucciones(receta.value?.instructions ?? ''))
 const faltantes = computed(() => receta.value?.match?.missing ?? [])
@@ -141,8 +148,14 @@ async function adaptar() {
         <v-chip v-if="receta.category" prepend-icon="mdi-tag-outline">{{ receta.category }}</v-chip>
         <v-chip v-if="receta.area" prepend-icon="mdi-earth">{{ receta.area }}</v-chip>
         <template v-if="esIa">
+          <v-chip v-if="receta.prep_minutes" prepend-icon="mdi-knife"
+            >Preparación {{ receta.prep_minutes }} min</v-chip
+          >
+          <v-chip v-if="receta.cook_minutes" prepend-icon="mdi-stove"
+            >Cocción {{ receta.cook_minutes }} min</v-chip
+          >
           <v-chip v-if="receta.estimated_minutes" prepend-icon="mdi-clock-outline"
-            >{{ receta.estimated_minutes }} min</v-chip
+            >Total {{ receta.estimated_minutes }} min</v-chip
           >
           <v-chip v-if="receta.difficulty" prepend-icon="mdi-chef-hat"
             >Dificultad {{ receta.difficulty }}</v-chip
@@ -249,11 +262,27 @@ async function adaptar() {
       <section aria-labelledby="titulo-pasos">
         <h2 id="titulo-pasos" class="text-h6 mb-2">Preparación</h2>
         <ol class="pasos pa-0" style="list-style: none">
-          <li v-for="(paso, n) in pasos" :key="n" class="d-flex ga-3 mb-4">
+          <li v-for="(paso, n) in pasosDetallados" :key="n" class="d-flex ga-3 mb-4">
             <v-avatar color="primary" size="32" class="flex-shrink-0">{{ n + 1 }}</v-avatar>
-            <p class="mb-0">{{ paso }}</p>
+            <div>
+              <p class="mb-1">{{ paso.text }}</p>
+              <StepTimer v-if="paso.minutes" :minutos="paso.minutes" />
+            </div>
           </li>
         </ol>
+        <v-card
+          v-if="esIa && receta.tips?.length"
+          class="pa-4 mt-2"
+          variant="tonal"
+          color="secondary"
+        >
+          <h3 class="text-subtitle-1 font-weight-bold mb-2">
+            <v-icon icon="mdi-lightbulb-on-outline" class="mr-1" aria-hidden="true" />Consejos
+          </h3>
+          <ul class="pl-5">
+            <li v-for="(consejo, n) in receta.tips" :key="n" class="mb-1">{{ consejo }}</li>
+          </ul>
+        </v-card>
       </section>
     </article>
 

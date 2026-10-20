@@ -5,7 +5,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
-from .services.ai import MEAL_TYPES, normalize_difficulty, normalize_meal_type
+from .services.ai import MEAL_TYPES, StepField, normalize_difficulty, normalize_meal_type
 from .services.localization import localize_recipe
 from .services.recipes import recipe_to_dict
 
@@ -186,7 +186,10 @@ class AISavedRecipeSerializer(serializers.Serializer):
     estimated_minutes = serializers.IntegerField(min_value=0, max_value=3000, required=False, allow_null=True, default=None)
     difficulty = serializers.CharField(allow_blank=True, required=False, default="", max_length=20)
     ingredients = serializers.ListField(child=_RecipeIngredientIn(), min_length=1, max_length=60)
-    steps = serializers.ListField(child=serializers.CharField(max_length=1500), min_length=1, max_length=40)
+    steps = serializers.ListField(child=StepField(), min_length=1, max_length=40)
+    tips = serializers.ListField(child=serializers.CharField(max_length=500), required=False, default=list, max_length=20)
+    prep_minutes = serializers.IntegerField(min_value=0, max_value=3000, required=False, allow_null=True, default=None)
+    cook_minutes = serializers.IntegerField(min_value=0, max_value=3000, required=False, allow_null=True, default=None)
     image = _AIImageSerializer(required=False, allow_null=True, default=None)
 
     def validate_meal_type(self, value):

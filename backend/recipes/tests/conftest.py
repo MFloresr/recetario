@@ -12,18 +12,29 @@ User = get_user_model()
 
 
 class FakeWikipedia:
-    """Wikipedia simulada: por defecto no hay artículos. `pages` = lista de {title, thumbnail, fullurl, index}."""
+    """Fuentes de fotos simuladas. Por defecto no hay nada en ninguna.
+
+    `pages` (Wikipedia): [{title, thumbnail, fullurl, index}] · `commons`: [{title, imageinfo, index}] ·
+    `pexels`: [{src, photographer, url}] · `fail`: todas las fuentes fallan.
+    """
 
     def __init__(self):
         self.pages: list[dict] = []
+        self.commons: list[dict] = []
+        self.pexels: list[dict] = []
         self.calls: list[dict] = []
+        self.pexels_calls: list[dict] = []
         self.fail = False
 
     def get(self, url, params=None, **kwargs):
-        self.calls.append(params or {})
         if self.fail:
             raise requests.ConnectionError()
-        paginas = {str(i): p for i, p in enumerate(self.pages)}
+        if "pexels.com" in url:
+            self.pexels_calls.append({"params": params, "headers": kwargs.get("headers")})
+            return FakeResponse({"photos": self.pexels})
+        self.calls.append(params or {})
+        lista = self.commons if "commons.wikimedia.org" in url else self.pages
+        paginas = {str(i): p for i, p in enumerate(lista)}
         return FakeResponse({"query": {"pages": paginas}} if paginas else {"batchcomplete": ""})
 
 
@@ -34,10 +45,10 @@ def wikipedia():
 
 @pytest.fixture(autouse=True)
 def bloquear_red(monkeypatch, wikipedia):
-    """Ningún test sale a internet: solo responde Wikipedia (simulada) y los fakes que cada test pida."""
+    """Ningún test sale a internet: solo responden las fotos simuladas y los fakes que cada test pida."""
 
     def get(self, url, **kw):
-        if "wikipedia.org" in url:
+        if "wikipedia.org" in url or "commons.wikimedia.org" in url or "pexels.com" in url:
             return wikipedia.get(url, **kw)
         raise RuntimeError(f"Llamada de red real en un test: {url}")
 
@@ -135,7 +146,7 @@ class FakeMealDB:
     def get(self, url, params=None, timeout=None, **kwargs):
         path = url.rsplit("/", 1)[-1]
         params = params or {}
-        if "wikipedia.org" in url:
+        if "wikipedia.org" in url or "wikimedia.org" in url:
             return FakeResponse({"batchcomplete": ""})
         if "mymemory" in url:
             return self._mymemory(params)

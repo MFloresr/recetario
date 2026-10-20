@@ -138,6 +138,12 @@ function minutos(m: number): string {
                 <v-chip v-if="s.estimated_minutes" size="small" prepend-icon="mdi-clock-outline">{{
                   minutos(s.estimated_minutes)
                 }}</v-chip>
+                <v-chip v-if="s.prep_minutes" size="small" prepend-icon="mdi-knife"
+                  >Preparación {{ minutos(s.prep_minutes) }}</v-chip
+                >
+                <v-chip v-if="s.cook_minutes" size="small" prepend-icon="mdi-stove"
+                  >Cocción {{ minutos(s.cook_minutes) }}</v-chip
+                >
                 <v-chip
                   v-if="s.difficulty"
                   size="small"
@@ -172,8 +178,23 @@ function minutos(m: number): string {
                 <v-expansion-panel title="Preparación">
                   <template #text>
                     <ol class="pl-5">
-                      <li v-for="(paso, j) in s.steps" :key="j" class="mb-2">{{ paso }}</li>
+                      <li v-for="(paso, j) in s.steps" :key="j" class="mb-3">
+                        {{ paso.text }}
+                        <v-chip
+                          v-if="paso.minutes"
+                          size="x-small"
+                          class="ml-1"
+                          prepend-icon="mdi-timer-outline"
+                          >{{ minutos(paso.minutes) }}</v-chip
+                        >
+                      </li>
                     </ol>
+                    <div v-if="s.tips.length" class="mt-3">
+                      <p class="font-weight-bold mb-1">Consejos</p>
+                      <ul class="pl-5">
+                        <li v-for="(consejo, j) in s.tips" :key="j" class="mb-1">{{ consejo }}</li>
+                      </ul>
+                    </div>
                   </template>
                 </v-expansion-panel>
               </v-expansion-panels>

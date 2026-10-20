@@ -46,7 +46,7 @@ python manage.py runserver
 
 La API queda en <http://localhost:8000/api/>. Comprobación rápida: <http://localhost:8000/api/health/> responde `{"status":"ok"}`.
 
-Tests (189):
+Tests (218):
 
 ```bash
 cd backend
@@ -66,7 +66,7 @@ npm run dev
 
 La app queda en <http://localhost:5173>. Crea una cuenta en «Crear cuenta» y empieza por añadir ingredientes.
 
-Otros comandos: `npm run test` (Vitest, 54 tests), `npm run lint`, `npm run format`, `npm run build`.
+Otros comandos: `npm run test` (Vitest, 59 tests), `npm run lint`, `npm run format`, `npm run build`.
 
 ## Variables de entorno
 
@@ -85,6 +85,7 @@ Otros comandos: `npm run test` (Vitest, 54 tests), `npm run lint`, `npm run form
 | `AI_BASE_URL` | Opcional: URL base de otra API compatible con OpenAI. Vacío = api.openai.com. |
 | `TRANSLATION_PROVIDER` | `auto` (IA si hay clave, si no MyMemory), `mymemory`, `ai` o `none`. |
 | `MYMEMORY_EMAIL` | Opcional: tu correo sube el cupo diario gratuito de MyMemory de 5.000 a 50.000 caracteres. |
+| `PEXELS_API_KEY` | Opcional: clave gratuita de Pexels para fotos de muestra de más platos. |
 
 **`frontend/.env`**:
 
@@ -108,7 +109,8 @@ TheMealDB solo existe en inglés, así que el frontend pide siempre `?lang=es` y
 ### Recetas de la IA: qué son y qué no son
 
 - **Las genera la IA a partir de lo que sabe; no navega por internet.** Una IA conectada por API (Gemini, OpenAI…) no busca en la web: escribe la receta desde su conocimiento. Por eso la pantalla lo avisa y conviene revisar cantidades y tiempos. Se le pide que proponga platos reales y conocidos, con su nombre habitual.
-- **Fotos:** vienen de Wikipedia (libre y sin clave) y solo se muestran si existe un artículo con el mismo nombre que el plato; si no, la receta sale sin foto en lugar de con una equivocada. Cada foto enlaza a su artículo (autoría y licencia). Los platos clásicos (tortilla de patatas, paella, gazpacho…) suelen tener foto; los poco conocidos, no.
+- **Fotos de muestra:** se buscan en varias fuentes seguidas: Wikipedia (foto del artículo del plato), Pexels (solo si pones `PEXELS_API_KEY`, una clave gratuita de https://www.pexels.com/api/) y Wikimedia Commons (archivos cuyo nombre coincide con el plato). Wikipedia y Commons solo se aceptan si el nombre coincide; si ninguna fuente da una foto fiable, la receta sale sin foto en lugar de con una equivocada. Cada foto enlaza a su origen (autoría y licencia). Con la clave de Pexels casi todos los platos tienen foto; sin ella, los clásicos (tortilla de patatas, paella, gazpacho…) y los que tienen archivos propios en Commons.
+- **Preparación detallada con tiempos:** a la IA se le pide un paso por acción (fuego o temperatura, utensilio, cómo saber que está listo), con los minutos de cada espera (cocción, horno, reposo), el tiempo de preparación y de cocción por separado y consejos. En la receta guardada cada paso con tiempo lleva un **temporizador** (con aviso sonoro y vibración) para cocinar desde el móvil. No hay fotos de cada paso: no existe una fuente gratuita fiable para cualquier plato.
 - **Tipo de comida:** puedes pedirlo («quiero un postre»). Las recetas de TheMealDB llevan también un tipo deducido de su categoría (Breakfast → desayuno, Dessert → postre…). TheMealDB no ofrece tiempo ni dificultad, así que esas recetas no los muestran.
 
 ### Usar otro proveedor de IA

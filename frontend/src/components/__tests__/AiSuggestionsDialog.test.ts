@@ -15,7 +15,13 @@ const tortilla: AiSuggestion = {
   ],
   ingredients_used: ['huevos'],
   missing_ingredients: ['patatas'],
-  steps: ['Pela las patatas', 'Fríelas'],
+  steps: [
+    { text: 'Pela las patatas', minutes: null },
+    { text: 'Fríelas', minutes: 15 },
+  ],
+  tips: ['Usa patatas harinosas'],
+  prep_minutes: 15,
+  cook_minutes: 30,
   estimated_minutes: 75,
   difficulty: 'fácil',
   image: {

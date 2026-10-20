@@ -128,6 +128,9 @@ AI_BASE_URL = env("AI_BASE_URL", default="")
 # Opcional: modelos de reserva (separados por comas) si el principal está saturado (429/5xx)
 AI_FALLBACK_MODELS = env.list("AI_FALLBACK_MODELS", default=[])
 
+# Opcional: clave gratuita de https://www.pexels.com/api/ para fotos de muestra de más platos
+PEXELS_API_KEY = env("PEXELS_API_KEY", default="")
+
 # Traducción de las recetas al español (TheMealDB solo existe en inglés).
 # auto = IA si hay clave configurada, si no MyMemory (gratuito, sin clave); también: mymemory, ai, none
 TRANSLATION_PROVIDER = env("TRANSLATION_PROVIDER", default="auto")

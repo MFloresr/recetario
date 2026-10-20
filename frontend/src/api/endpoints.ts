@@ -133,6 +133,9 @@ export const favoritesApi = {
               ? s.ingredients
               : s.ingredients_used.map((name) => ({ name, quantity: '' })),
             steps: s.steps,
+            tips: s.tips,
+            prep_minutes: s.prep_minutes,
+            cook_minutes: s.cook_minutes,
             image: s.image,
           },
         },

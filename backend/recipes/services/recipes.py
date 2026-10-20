@@ -39,6 +39,11 @@ def recipe_to_dict(recipe: RecipeCache) -> dict:
                 "servings": extra.get("servings"),
                 "image_credit": extra.get("image_credit", ""),
                 "image_page": extra.get("image_page", ""),
+                "prep_minutes": extra.get("prep_minutes"),
+                "cook_minutes": extra.get("cook_minutes"),
+                "tips": extra.get("tips", []),
+                # Pasos con su tiempo; si la receta es antigua (solo texto) se reconstruyen sin tiempos
+                "steps": extra.get("steps") or [{"text": linea, "minutes": None} for linea in recipe.instructions.splitlines() if linea.strip()],
             }
         )
     return datos
@@ -66,7 +71,7 @@ def save_ai_recipe(user_id: int, datos: dict) -> RecipeCache:
             "image": imagen.get("url", ""),
             "category": "",
             "area": "",
-            "instructions": "\n".join(datos["steps"]),
+            "instructions": "\n".join(p["text"] for p in datos["steps"]),
             "ingredients": [{"ingredient": i["name"], "measure": i.get("quantity", "")} for i in datos["ingredients"]],
             "raw_data": {
                 "description": datos.get("description", ""),
@@ -74,6 +79,10 @@ def save_ai_recipe(user_id: int, datos: dict) -> RecipeCache:
                 "estimated_minutes": datos.get("estimated_minutes"),
                 "difficulty": datos.get("difficulty", ""),
                 "servings": datos.get("servings"),
+                "prep_minutes": datos.get("prep_minutes"),
+                "cook_minutes": datos.get("cook_minutes"),
+                "tips": datos.get("tips", []),
+                "steps": datos["steps"],
                 "image_credit": imagen.get("credit", ""),
                 "image_page": imagen.get("page", ""),
             },

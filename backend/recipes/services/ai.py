@@ -6,6 +6,7 @@ otro protocolo se escribe otra subclase de `AIRecipeService` y se registra en `P
 """
 
 import json
+import re
 from abc import ABC, abstractmethod
 
 import requests
@@ -54,6 +55,36 @@ class _RecipeIngredient(serializers.Serializer):
     quantity = serializers.CharField(allow_blank=True, required=False, default="")
 
 
+def _to_minutes(valor) -> int | None:
+    """15 → 15; «15-20 min» → 15; null/«» → None."""
+    if valor is None or isinstance(valor, bool):
+        return None
+    if isinstance(valor, (int, float)):
+        return max(0, int(valor))
+    encontrado = re.search(r"\d+", str(valor))
+    return int(encontrado.group()) if encontrado else None
+
+
+class StepField(serializers.Field):
+    """Un paso de la receta: admite un texto suelto o {text, minutes} y siempre devuelve {text, minutes}."""
+
+    def to_internal_value(self, data):
+        if isinstance(data, str):
+            texto, minutos = data.strip(), None
+        elif isinstance(data, dict):
+            texto, minutos = str(data.get("text") or data.get("texto") or "").strip(), _to_minutes(data.get("minutes"))
+        else:
+            raise serializers.ValidationError("Un paso debe ser un texto o un objeto con `text` y `minutes`.")
+        if not texto:
+            raise serializers.ValidationError("El paso no puede estar vacío.")
+        if len(texto) > 1500:
+            raise serializers.ValidationError("El paso es demasiado largo.")
+        return {"text": texto, "minutes": minutos}
+
+    def to_representation(self, value):
+        return value
+
+
 class _Suggestion(serializers.Serializer):
     title = serializers.CharField()
     description = serializers.CharField(allow_blank=True, required=False, default="")
@@ -61,8 +92,13 @@ class _Suggestion(serializers.Serializer):
     ingredients = _RecipeIngredient(many=True, required=False, default=list)
     ingredients_used = serializers.ListField(child=serializers.CharField(), default=list)
     missing_ingredients = serializers.ListField(child=serializers.CharField(), default=list)
-    steps = serializers.ListField(child=serializers.CharField(), default=list)
+    steps = serializers.ListField(child=StepField(), default=list)
+    tips = serializers.ListField(child=serializers.CharField(), default=list, required=False)
     estimated_minutes = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
+    prep_minutes = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
+    cook_minutes = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
+    photo_query = serializers.CharField(allow_blank=True, required=False, default="")
+    photo_query_en = serializers.CharField(allow_blank=True, required=False, default="")
     servings = serializers.IntegerField(min_value=1, required=False, allow_null=True, default=None)
     difficulty = serializers.CharField(allow_blank=True, required=False, default="")
 
@@ -214,12 +250,21 @@ class OpenAICompatibleService(AIRecipeService):
             + ".\n"
             f"Dieta: {c.get('diet') or 'sin restricciones'}. Evitar: {', '.join(c.get('avoid') or []) or 'nada'}.\n"
             "Usa el nombre habitual del plato en español (sin inventar nombres de fantasía). "
-            "Cada receta lleva TODOS sus ingredientes con cantidad para el número de raciones indicado, los pasos "
-            "detallados, el tiempo total en minutos, la dificultad y el tipo de comida.\n"
+            "Cada receta lleva TODOS sus ingredientes con cantidad para el número de raciones indicado, la dificultad "
+            "y el tipo de comida.\n"
+            "Los pasos deben ser MUY detallados, como los de un libro de cocina: qué hacer exactamente, cómo cortar o "
+            "preparar cada ingrediente, a qué fuego o temperatura del horno, en qué utensilio, cuánto tiempo y cómo "
+            "saber que está listo (color, textura, olor). Un paso = una acción concreta; si un paso lleva tiempo de "
+            "cocción, reposo o horno, indica los minutos en `minutes` (un número; null si no hay espera). Da entre 6 y 14 "
+            "pasos. Añade `prep_minutes` (preparación), `cook_minutes` (cocción), `estimated_minutes` (total) y de 2 a 4 "
+            "consejos en `tips` (trucos, cómo conservarla, errores típicos).\n"
+            "`photo_query` es el nombre corto y genérico del plato en español (p. ej. «lasaña», «arroz con leche») y "
+            "`photo_query_en` el mismo en inglés, para buscar una foto de muestra.\n"
             'Devuelve {"suggestions": [{"title", "description", "meal_type": "' + "|".join(MEAL_TYPES) + '", '
             '"servings": número, "ingredients": [{"name", "quantity"}], "ingredients_used": [de los que tengo], '
-            '"missing_ingredients": [los que me faltan], "steps": [], "estimated_minutes": número, '
-            '"difficulty": "fácil|media|difícil"}]}.'
+            '"missing_ingredients": [los que me faltan], "steps": [{"text", "minutes"}], "tips": [], '
+            '"prep_minutes": número, "cook_minutes": número, "estimated_minutes": número, '
+            '"difficulty": "fácil|media|difícil", "photo_query", "photo_query_en"}]}.'
         )
         return self._ask(prompt, SuggestionsOutput)
 
