@@ -188,3 +188,24 @@ def test_una_receta_sin_pasos_ni_ingredientes_no_se_guarda_pero_se_muestra(clien
     s = client.post("/api/ai/suggestions/", {"query": "idea"}, format="json").json()["suggestions"][0]
     assert s["saved"] is False and s["external_id"] is None
     assert FavoriteRecipe.objects.count() == 0
+
+
+def test_una_foto_con_url_muy_larga_se_guarda_sin_romper(client, fake_ai):
+    url = "https://thumb.wikimedia.org/wikipedia/commons/thumb/" + "a" * 330 + ".jpg"
+    receta = {**RECETA, "image": {"url": url, "credit": "Wikimedia Commons", "page": "https://commons.wikimedia.org/x"}}
+    r = guardar(client, receta)
+    assert r.status_code == 201 and r.json()["recipe"]["image"] == url
+
+
+def test_si_guardar_falla_la_receta_se_muestra_igual(client, fake_ai, monkeypatch):
+    from django.db import DataError
+
+    def falla(*a, **kw):
+        raise DataError("value too long")
+
+    monkeypatch.setattr("recipes.services.recipes.save_ai_recipe", falla)
+    fake_ai.queue = [json.dumps({"suggestions": [{"title": "Tortilla", "ingredients": [{"name": "huevos", "quantity": "4"}], "steps": ["Bate"]}]})]
+    r = client.post("/api/ai/suggestions/", {"query": "tortilla"}, format="json")
+    assert r.status_code == 200
+    s = r.json()["suggestions"][0]
+    assert s["title"] == "Tortilla" and s["saved"] is False and s["external_id"] is None

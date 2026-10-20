@@ -36,7 +36,7 @@ class RecipeCache(models.Model):
     external_id = models.CharField(max_length=50, unique=True)
     source = models.CharField(max_length=30, default="themealdb")
     title = models.CharField(max_length=200)
-    image = models.URLField(blank=True)
+    image = models.URLField(max_length=600, blank=True)  # las fotos de Commons/Openverse superan los 200 caracteres
     category = models.CharField(max_length=100, blank=True)
     area = models.CharField(max_length=100, blank=True)
     instructions = models.TextField(blank=True)

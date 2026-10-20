@@ -1,9 +1,11 @@
 """Acceso a recetas: caché en base de datos (solo al abrir en detalle o marcar favorita) y caché en memoria."""
 
 import hashlib
+import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from django.core.cache import cache
+from django.db import DatabaseError, transaction
 
 from ..exceptions import ExternalServiceError
 
@@ -12,6 +14,7 @@ from ..normalization import normalize_name
 from .themealdb import SOURCE, TheMealDBClient
 
 MEMORY_TTL = 60 * 60  # 1 hora
+logger = logging.getLogger(__name__)
 
 
 AI_SOURCE = "ai"
@@ -184,6 +187,11 @@ def save_suggestion_for_user(user, sugerencia: dict) -> str | None:
     if not ingredientes or not pasos:
         return None
     datos = {**sugerencia, "ingredients": ingredientes, "steps": pasos}
-    guardada = save_ai_recipe(user.id, datos)
-    FavoriteRecipe.objects.get_or_create(user=user, recipe=guardada)
+    try:
+        with transaction.atomic():  # punto de guardado: un fallo aquí no debe tumbar la respuesta de la IA
+            guardada = save_ai_recipe(user.id, datos)
+            FavoriteRecipe.objects.get_or_create(user=user, recipe=guardada)
+    except DatabaseError:
+        logger.exception("No se pudo guardar la receta «%s» de la IA", sugerencia.get("title"))
+        return None
     return guardada.external_id
