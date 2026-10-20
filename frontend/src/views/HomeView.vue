@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AiSuggestionsDialog from '@/components/AiSuggestionsDialog.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -15,6 +16,7 @@ import type { AiSuggestion, Ingredient } from '@/types/api'
 import { CATEGORIAS_RECETA } from '@/utils/catalogo'
 import { mensajeDeError, notificarError } from '@/utils/errores'
 
+const router = useRouter()
 const pantry = usePantryStore()
 const recipes = useRecipeStore()
 const ui = useUiStore()
@@ -129,6 +131,12 @@ async function guardarRecetaIa(receta: AiSuggestion) {
   } finally {
     guardandoIa.value = null
   }
+}
+
+function abrirRecetaIa(receta: AiSuggestion) {
+  if (!receta.external_id) return
+  iaAbierta.value = false
+  void router.push({ name: 'recipe', params: { externalId: receta.external_id } })
 }
 
 async function añadirFaltantesIa(receta: AiSuggestion) {
@@ -300,6 +308,7 @@ watch(iaTipo, () => {
       @buscar="sugerirConIa"
       @guardar="guardarRecetaIa"
       @añadir-faltantes="añadirFaltantesIa"
+      @abrir="abrirRecetaIa"
       @reintentar="sugerirConIa"
     />
   </v-container>

@@ -68,7 +68,7 @@ async function quitar() {
 
 <template>
   <v-container class="favorites-view py-6" style="max-width: 1100px">
-    <h1 class="text-h4 font-weight-bold mb-4">Favoritos</h1>
+    <h1 class="text-h4 font-weight-bold mb-4">Mis recetas</h1>
 
     <v-row v-if="recipes.cargandoFavoritos && !recipes.favoritosCargados">
       <v-col v-for="n in 3" :key="n" cols="12" sm="6" md="4"
@@ -80,7 +80,7 @@ async function quitar() {
       v-else-if="!recipes.favoritos.length"
       icono="mdi-heart-outline"
       titulo="Todavía no has guardado recetas"
-      texto="Pulsa el corazón de una receta para guardarla aquí junto con tus notas."
+      texto="Aquí se guardan las recetas que genera la IA y las que marques con el corazón, junto con tus notas."
     >
       <v-btn color="primary" :to="{ name: 'home' }">Buscar recetas</v-btn>
     </EmptyState>

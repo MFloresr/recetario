@@ -142,10 +142,48 @@ export interface AiSuggestion {
   photo_query_en?: string
   /** Foto orientativa de Wikipedia; null si no hay un artículo fiable sobre el plato. */
   image: { url: string; credit: string; page: string } | null
+  /** El servidor la guarda sola en el recetario del usuario; este es su identificador. */
+  external_id?: string | null
+  saved?: boolean
 }
 
 export interface AiAdaptation {
   substitutions: { original: string; substitute: string; note: string }[]
   adapted_steps: string[]
   warnings: string[]
+}
+
+// --- Dieta semanal ---
+
+export type TipoComidaPlan = 'desayuno' | 'almuerzo' | 'merienda' | 'cena' | 'snack'
+
+export interface ComidaPlan {
+  type: TipoComidaPlan
+  title: string
+  description: string
+  calories: number | null
+  ingredients: string[]
+}
+
+export interface DiaPlan {
+  day: string
+  meals: ComidaPlan[]
+}
+
+export interface OpcionesPlan {
+  goal: string
+  meals: string[]
+  calories: number | null
+  diet: string
+  avoid: string[]
+  use_pantry: boolean
+}
+
+export interface MealPlan {
+  id: number
+  title: string
+  options: OpcionesPlan
+  days: DiaPlan[]
+  notes: string
+  created_at: string
 }

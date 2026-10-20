@@ -115,6 +115,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     sugerenciasIa.value = []
     try {
       sugerenciasIa.value = await aiApi.suggestions(ingredientes, tipoComida, consulta)
+      favoritosCargados.value = false // el servidor guarda solas las recetas generadas: «Mis recetas» se recarga
     } catch (e) {
       throw aApiError(e)
     } finally {

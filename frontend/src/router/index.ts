@@ -49,7 +49,13 @@ const router = createRouter({
       path: '/favorites',
       name: 'favorites',
       component: () => import('@/views/FavoritesView.vue'),
-      meta: { titulo: 'Favoritos', privada: true },
+      meta: { titulo: 'Mis recetas', privada: true },
+    },
+    {
+      path: '/meal-plan',
+      name: 'meal-plan',
+      component: () => import('@/views/MealPlanView.vue'),
+      meta: { titulo: 'Dieta semanal', privada: true },
     },
     {
       path: '/recipes/:externalId',

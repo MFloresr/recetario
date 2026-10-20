@@ -18,7 +18,12 @@ const emit = defineEmits<{
   buscar: []
   guardar: [sugerencia: AiSuggestion]
   'añadir-faltantes': [sugerencia: AiSuggestion]
+  abrir: [sugerencia: AiSuggestion]
 }>()
+
+function estaGuardada(s: AiSuggestion, guardadas?: string[]): boolean {
+  return Boolean(s.saved) || Boolean(guardadas?.includes(s.title))
+}
 
 const COLOR_DIFICULTAD: Record<string, string> = {
   fácil: 'success',
@@ -206,15 +211,20 @@ function minutos(m: number): string {
             </v-card-text>
 
             <v-card-actions class="px-4 pb-4 flex-wrap ga-2">
-              <v-btn
-                v-if="guardadas?.includes(s.title)"
-                variant="tonal"
-                color="primary"
-                prepend-icon="mdi-check"
-                disabled
-              >
-                Guardada en tu recetario
-              </v-btn>
+              <template v-if="estaGuardada(s, guardadas)">
+                <v-btn variant="tonal" color="primary" prepend-icon="mdi-check" disabled>
+                  Guardada en tu recetario
+                </v-btn>
+                <v-btn
+                  v-if="s.external_id"
+                  variant="flat"
+                  color="primary"
+                  prepend-icon="mdi-open-in-new"
+                  @click="emit('abrir', s)"
+                >
+                  Abrir receta
+                </v-btn>
+              </template>
               <v-btn
                 v-else
                 variant="flat"
@@ -238,8 +248,9 @@ function minutos(m: number): string {
           </v-card>
 
           <p class="text-caption text-medium-emphasis">
-            Recetas generadas por una IA a partir de lo que sabe (no está navegando por internet):
-            revisa cantidades y tiempos antes de cocinar.
+            Las recetas que genera la IA se guardan solas en «Mis recetas» para que las veas otro
+            día. Recetas generadas por una IA a partir de lo que sabe (no está navegando por
+            internet): revisa cantidades y tiempos antes de cocinar.
           </p>
         </div>
 

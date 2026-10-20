@@ -11,16 +11,18 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
+from .models import FavoriteRecipe, Ingredient, MealPlan, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
 from .serializers import (
     AIRecipeInputSerializer,
+    AIMealPlanInputSerializer,
     AISuggestionsInputSerializer,
     DeleteAccountSerializer,
     FavoriteCreateSerializer,
     FavoriteSerializer,
     IngredientSerializer,
     LoginSerializer,
+    MealPlanSerializer,
     RegisterSerializer,
     ShoppingListItemSerializer,
     SuggestionsQuerySerializer,
@@ -31,7 +33,7 @@ from .services.images import attach_images
 from .catalog import to_english
 from .services.localization import localize_recipe, localize_summaries
 from .services.matching import calculate_match, with_spanish_names
-from .services.recipes import AI_SOURCE, get_recipe, is_ai_recipe_of, save_ai_recipe, save_recipe
+from .services.recipes import AI_SOURCE, get_recipe, is_ai_recipe_of, save_ai_recipe, save_recipe, save_suggestion_for_user
 from .services.suggestions import build_suggestions, parse_ingredients
 from .services.translation import translate_strings
 
@@ -234,6 +236,10 @@ class AISuggestionsView(AIBaseView):
         )
         # Foto orientativa de Wikipedia cuando el plato tiene artículo propio (si no, `image` es null)
         resultado["suggestions"] = attach_images(resultado["suggestions"])
+        # Toda receta generada queda guardada en el recetario del usuario para verla otro día
+        for sugerencia in resultado["suggestions"]:
+            sugerencia["external_id"] = save_suggestion_for_user(request.user, sugerencia)
+            sugerencia["saved"] = sugerencia["external_id"] is not None
         return Response(resultado)
 
 
@@ -256,3 +262,36 @@ class AIShoppingListView(AIBaseView):
         )
         return Response(resultado)
 
+
+
+MAX_PLANES = 5  # se conservan los últimos planes de cada usuario
+
+
+class AIMealPlanView(AIBaseView):
+    """Genera la dieta de la semana, la guarda y la devuelve."""
+
+    def post(self, request):
+        entrada = AIMealPlanInputSerializer(data=request.data)
+        entrada.is_valid(raise_exception=True)
+        d = entrada.validated_data
+        despensa = []
+        if d["use_pantry"]:
+            despensa = list(Ingredient.objects.filter(user=request.user, in_pantry=True).values_list("name", flat=True)[:40])
+        resultado = ai_service.get_ai_service().generate_meal_plan({**d, "pantry": despensa})
+        opciones = {k: d[k] for k in ("goal", "meals", "calories", "diet", "avoid", "use_pantry")}
+        with transaction.atomic():
+            plan = MealPlan.objects.create(
+                user=request.user,
+                title=resultado.get("title") or "Dieta de la semana",
+                options=opciones,
+                days=resultado["days"],
+                notes=resultado.get("notes", ""),
+            )
+            antiguos = MealPlan.objects.filter(user=request.user).values_list("id", flat=True)[MAX_PLANES:]
+            MealPlan.objects.filter(id__in=list(antiguos)).delete()
+        return Response(MealPlanSerializer(plan).data, status=status.HTTP_201_CREATED)
+
+
+class MealPlanViewSet(OwnedViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin):
+    queryset = MealPlan.objects.all()
+    serializer_class = MealPlanSerializer

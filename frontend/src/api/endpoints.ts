@@ -4,6 +4,8 @@ import type {
   AiSuggestion,
   Favorite,
   Ingredient,
+  MealPlan,
+  OpcionesPlan,
   Recipe,
   ShoppingItem,
   SuggestionFilters,
@@ -183,4 +185,16 @@ export const aiApi = {
         { timeout: TIEMPO_IA },
       )
     ).data,
+}
+
+// --- Dieta semanal ---
+
+export const mealPlansApi = {
+  list: async () => (await api.get<MealPlan[]>('/meal-plans/')).data,
+  /** La IA genera la dieta de la semana y el servidor la guarda. Tarda: es una respuesta larga. */
+  generate: async (opciones: OpcionesPlan) =>
+    (await api.post<MealPlan>('/ai/meal-plan/', opciones, { timeout: TIEMPO_IA })).data,
+  remove: async (id: number) => {
+    await api.delete(`/meal-plans/${id}/`)
+  },
 }

@@ -153,7 +153,38 @@ def test_sin_ingredientes_ni_busqueda_da_400(client, fake_ai, cuerpo):
     assert fake_ai.calls == 0
 
 
-def test_una_receta_buscada_se_guarda_igual_que_las_demas(client, fake_ai):
+def test_una_receta_buscada_se_guarda_sola_en_el_recetario(client, fake_ai):
     fake_ai.queue = [json.dumps({"suggestions": [{"title": "Lasaña", "meal_type": "almuerzo", "ingredients": [{"name": "pasta", "quantity": "250 g"}], "steps": ["Cuece la pasta"], "difficulty": "media", "estimated_minutes": 60}]})]
     sugerida = client.post("/api/ai/suggestions/", {"query": "lasaña"}, format="json").json()["suggestions"][0]
-    assert guardar(client, sugerida).status_code == 201
+    assert sugerida["saved"] is True and sugerida["external_id"].startswith("ai-")
+    assert guardar(client, sugerida).status_code == 400  # ya estaba guardada: no se duplica
+
+
+def test_las_recetas_generadas_quedan_guardadas_para_verlas_otro_dia(client, other_client, fake_ai):
+    fake_ai.queue = [json.dumps({"suggestions": [
+        {"title": "Tortilla", "ingredients": [{"name": "huevos", "quantity": "4"}], "steps": [{"text": "Bate los huevos", "minutes": 2}]},
+        {"title": "Sopa", "ingredients_used": ["caldo"], "steps": ["Calienta el caldo"]},
+    ]})]
+    r = client.post("/api/ai/suggestions/", {"query": "algo rápido"}, format="json").json()["suggestions"]
+    assert [s["saved"] for s in r] == [True, True]
+    guardadas = client.get("/api/favorites/").json()
+    assert {g["recipe"]["title"] for g in guardadas} == {"Tortilla", "Sopa"}
+    # otro día: se abre el detalle de la receta guardada; es solo de su dueño
+    assert client.get(f"/api/recipes/{r[0]['external_id']}/").status_code == 200
+    assert other_client.get(f"/api/recipes/{r[0]['external_id']}/").status_code == 404
+    assert other_client.get("/api/favorites/").json() == []
+
+
+def test_pedir_dos_veces_la_misma_receta_no_la_duplica(client, fake_ai):
+    cuerpo = json.dumps({"suggestions": [{"title": "Tortilla", "ingredients": [{"name": "huevos", "quantity": "4"}], "steps": ["Bate"]}]})
+    fake_ai.queue = [cuerpo, cuerpo]
+    client.post("/api/ai/suggestions/", {"query": "tortilla"}, format="json")
+    client.post("/api/ai/suggestions/", {"query": "tortilla"}, format="json")
+    assert FavoriteRecipe.objects.count() == 1
+
+
+def test_una_receta_sin_pasos_ni_ingredientes_no_se_guarda_pero_se_muestra(client, fake_ai):
+    fake_ai.queue = [json.dumps({"suggestions": [{"title": "Idea vaga", "description": "algo"}]})]
+    s = client.post("/api/ai/suggestions/", {"query": "idea"}, format="json").json()["suggestions"][0]
+    assert s["saved"] is False and s["external_id"] is None
+    assert FavoriteRecipe.objects.count() == 0

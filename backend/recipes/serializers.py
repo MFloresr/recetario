@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
+from .models import FavoriteRecipe, Ingredient, MealPlan, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
 from .services.ai import MEAL_TYPES, StepField, normalize_difficulty, normalize_meal_type
 from .services.localization import localize_recipe
@@ -249,3 +249,25 @@ class AISuggestionsInputSerializer(serializers.Serializer):
         if not attrs["ingredients"] and not attrs["query"].strip():
             raise serializers.ValidationError("Indica ingredientes o escribe qué receta buscas.")
         return attrs
+
+
+class AIMealPlanInputSerializer(serializers.Serializer):
+    goal = serializers.ChoiceField(choices=["mantener el peso", "bajar de peso", "ganar músculo", "comer más sano"], required=False, default="mantener el peso")
+    meals = serializers.ListField(
+        child=serializers.ChoiceField(choices=["desayuno", "almuerzo", "merienda", "cena"]),
+        required=False,
+        min_length=2,
+        max_length=4,
+        default=lambda: ["desayuno", "almuerzo", "merienda", "cena"],
+    )
+    calories = serializers.IntegerField(required=False, allow_null=True, min_value=1000, max_value=5000, default=None)
+    diet = serializers.CharField(allow_blank=True, required=False, default="", max_length=100)
+    avoid = serializers.ListField(child=serializers.CharField(max_length=100), required=False, default=list, max_length=30)
+    use_pantry = serializers.BooleanField(required=False, default=False)
+
+
+class MealPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MealPlan
+        fields = ["id", "title", "options", "days", "notes", "created_at"]
+        read_only_fields = fields

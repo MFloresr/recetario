@@ -5,6 +5,7 @@ import { useDisplay, useTheme } from 'vuetify'
 import DeleteAccountDialog from '@/components/DeleteAccountDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { usePantryStore } from '@/stores/pantry'
+import { useMealPlanStore } from '@/stores/mealPlan'
 import { useRecipeStore } from '@/stores/recipe'
 import { useShoppingListStore } from '@/stores/shoppingList'
 import { useUiStore } from '@/stores/ui'
@@ -13,6 +14,7 @@ const ui = useUiStore()
 const auth = useAuthStore()
 const pantry = usePantryStore()
 const recipes = useRecipeStore()
+const mealPlan = useMealPlanStore()
 const shopping = useShoppingListStore()
 const theme = useTheme()
 const router = useRouter()
@@ -29,7 +31,18 @@ const enlaces = [
   },
   { nombre: 'pantry', texto: 'Despensa', icono: 'mdi-fridge-outline', iconoActivo: 'mdi-fridge' },
   { nombre: 'shopping-list', texto: 'Compra', icono: 'mdi-cart-outline', iconoActivo: 'mdi-cart' },
-  { nombre: 'favorites', texto: 'Favoritos', icono: 'mdi-heart-outline', iconoActivo: 'mdi-heart' },
+  {
+    nombre: 'favorites',
+    texto: 'Mis recetas',
+    icono: 'mdi-heart-outline',
+    iconoActivo: 'mdi-heart',
+  },
+  {
+    nombre: 'meal-plan',
+    texto: 'Dieta',
+    icono: 'mdi-calendar-week-outline',
+    iconoActivo: 'mdi-calendar-week',
+  },
 ] as const
 
 const mostrarNavegacion = computed(() => auth.autenticado && !route.meta.soloInvitados)
@@ -51,6 +64,7 @@ function salir() {
   auth.cerrarSesion()
   pantry.vaciar()
   recipes.vaciar()
+  mealPlan.vaciar()
   shopping.vaciar()
   void router.replace({ name: 'login' })
 }
@@ -58,6 +72,7 @@ function salir() {
 function cuentaEliminada() {
   pantry.vaciar()
   recipes.vaciar()
+  mealPlan.vaciar()
   shopping.vaciar()
   ui.mostrarAviso('Tu cuenta y tus datos se han eliminado.', 'success')
   void router.replace({ name: 'login' })
@@ -66,6 +81,7 @@ function cuentaEliminada() {
 function sesionCaducada() {
   pantry.vaciar()
   recipes.vaciar()
+  mealPlan.vaciar()
   shopping.vaciar()
   ui.mostrarAviso('Tu sesión ha caducado. Vuelve a entrar.', 'info')
   void router.replace({ name: 'login' })

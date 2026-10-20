@@ -137,4 +137,14 @@ describe('AiSuggestionsDialog', () => {
     const botones = [...document.body.querySelectorAll('button')].map((b) => b.textContent ?? '')
     expect(botones.some((t) => t.includes('Guardar en mi recetario'))).toBe(false)
   })
+
+  it('si el servidor la guardó sola lo indica y deja abrirla', async () => {
+    const { wrapper } = await montarDialogo([{ ...tortilla, saved: true, external_id: 'ai-1-abc' }])
+    expect(document.body.textContent).toContain('Guardada en tu recetario')
+    expect(document.body.textContent).toContain('se guardan solas')
+    const botones = [...document.body.querySelectorAll('button')]
+    expect(botones.some((b) => b.textContent?.includes('Guardar en mi recetario'))).toBe(false)
+    botones.find((b) => b.textContent?.includes('Abrir receta'))?.click()
+    expect(wrapper.emitted('abrir')?.[0]?.[0]).toMatchObject({ external_id: 'ai-1-abc' })
+  })
 })

@@ -134,6 +134,44 @@ class ShoppingOutput(serializers.Serializer):
     missing = _MissingItem(many=True)
 
 
+PLAN_MEAL_TYPES = ["desayuno", "almuerzo", "merienda", "cena", "snack"]
+PLAN_DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+
+
+class _PlanMeal(serializers.Serializer):
+    type = serializers.CharField()
+    title = serializers.CharField(max_length=160)
+    description = serializers.CharField(allow_blank=True, required=False, default="", max_length=300)
+    calories = serializers.IntegerField(min_value=0, max_value=5000, required=False, allow_null=True, default=None)
+    ingredients = serializers.ListField(child=serializers.CharField(max_length=80), required=False, default=list, max_length=15)
+
+    def validate_type(self, value):
+        clave = normalize_name(value)
+        clave = {"comida": "almuerzo", "cenar": "cena", "tentempie": "snack", "media manana": "snack", "colacion": "snack"}.get(clave, clave)
+        return clave if clave in PLAN_MEAL_TYPES else "snack"
+
+
+class _PlanDay(serializers.Serializer):
+    day = serializers.CharField()
+    meals = _PlanMeal(many=True)
+
+
+class MealPlanOutput(serializers.Serializer):
+    title = serializers.CharField(allow_blank=True, required=False, default="", max_length=120)
+    days = _PlanDay(many=True)
+    notes = serializers.CharField(allow_blank=True, required=False, default="", max_length=600)
+
+    def validate_days(self, value):
+        if len(value) != 7:
+            raise serializers.ValidationError("El plan debe tener 7 días.")
+        # los días se fijan en el orden de la semana, sea cual sea la forma en que los nombre la IA
+        for dia, nombre in zip(value, PLAN_DAYS):
+            dia["day"] = nombre
+            if not dia["meals"]:
+                raise serializers.ValidationError("Cada día necesita comidas.")
+        return value
+
+
 class TranslationOutput(serializers.Serializer):
     translations = serializers.ListField(child=serializers.CharField(allow_blank=True))
 
@@ -150,6 +188,9 @@ class AIRecipeService(ABC):
 
     @abstractmethod
     def generate_shopping_list(self, recipe: dict, available_ingredients: list[str]) -> dict: ...
+
+    @abstractmethod
+    def generate_meal_plan(self, options: dict) -> dict: ...
 
     @abstractmethod
     def translate(self, texts: list[str], source: str = "en", target: str = "es") -> list[str]: ...
@@ -287,6 +328,27 @@ class OpenAICompatibleService(AIRecipeService):
             'Formato: {"missing": [{"name", "quantity"}]}.'
         )
         return self._ask(prompt, ShoppingOutput)
+
+    def generate_meal_plan(self, options: dict) -> dict:
+        comidas = options.get("meals") or ["desayuno", "almuerzo", "merienda", "cena"]
+        objetivo = options.get("goal") or "mantener el peso"
+        calorias = options.get("calories")
+        despensa = options.get("pantry") or []
+        prompt = (
+            "Prepara una dieta semanal equilibrada y variada, de lunes a domingo, con platos reales y fáciles de cocinar "
+            "en casa (nombres habituales en español, sin repetir el mismo plato principal en la semana).\n"
+            f"Comidas de cada día: {', '.join(comidas)}.\n"
+            f"Objetivo: {objetivo}."
+            + (f" Unas {calorias} kcal al día en total." if calorias else "")
+            + f"\nDieta: {options.get('diet') or 'sin restricciones'}. Evitar: {', '.join(options.get('avoid') or []) or 'nada'}.\n"
+            + (f"Intenta aprovechar estos ingredientes que ya tengo: {', '.join(despensa)}.\n" if despensa else "")
+            + "Cada comida lleva: `type` (uno de las comidas indicadas), `title` (nombre del plato), `description` "
+            "(una frase de máximo 90 caracteres), `calories` (kcal aproximadas de una ración) e `ingredients` "
+            "(de 3 a 7 ingredientes principales). Pon en `notes` un consejo breve para seguir la semana.\n"
+            'Devuelve {"title": "título corto del plan", "days": [{"day": "Lunes", "meals": [{"type", "title", "description", '
+            '"calories", "ingredients": []}]}, ... los 7 días], "notes": ""}.'
+        )
+        return self._ask(prompt, MealPlanOutput)
 
     def translate(self, texts: list[str], source: str = "en", target: str = "es") -> list[str]:
         """Traduce una lista de textos manteniendo el orden y la longitud de la lista."""

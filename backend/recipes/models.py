@@ -99,3 +99,20 @@ class ShoppingListItem(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class MealPlan(models.Model):
+    """Dieta semanal generada por la IA: 7 días con sus comidas. Se guarda para consultarla otro día."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="meal_plans")
+    title = models.CharField(max_length=120)
+    options = models.JSONField(default=dict)  # lo que se pidió: objetivo, dieta, evitar, comidas, calorías
+    days = models.JSONField(default=list)  # [{"day", "meals": [{"type", "title", "description", "calories", "ingredients"}]}]
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return self.title

@@ -8,6 +8,7 @@ router = SimpleRouter()
 router.register("ingredients", views.IngredientViewSet, basename="ingredient")
 router.register("shopping-list", views.ShoppingListViewSet, basename="shopping-list")
 router.register("favorites", views.FavoriteViewSet, basename="favorite")
+router.register("meal-plans", views.MealPlanViewSet, basename="meal-plan")
 
 urlpatterns = [
     path("health/", views.health, name="health"),
@@ -19,6 +20,7 @@ urlpatterns = [
     path("recipes/<str:external_id>/", views.RecipeDetailView.as_view(), name="recipe-detail"),
     path("ai/suggestions/", views.AISuggestionsView.as_view(), name="ai-suggestions"),
     path("ai/adapt-recipe/", views.AIAdaptRecipeView.as_view(), name="ai-adapt-recipe"),
+    path("ai/meal-plan/", views.AIMealPlanView.as_view(), name="ai-meal-plan"),
     path("ai/shopping-list/", views.AIShoppingListView.as_view(), name="ai-shopping-list"),
     *router.urls,
 ]

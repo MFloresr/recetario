@@ -170,3 +170,20 @@ def get_recipe(external_id: str, client: TheMealDBClient | None = None, save: bo
     if receta is not None and save:
         save_recipe(receta)
     return receta
+
+
+def save_suggestion_for_user(user, sugerencia: dict) -> str | None:
+    """Guarda en el recetario de `user` una receta que la IA acaba de proponer y devuelve su `external_id`.
+
+    Devuelve None si la receta no tiene lo mínimo para guardarse (sin ingredientes o sin pasos).
+    """
+    from ..models import FavoriteRecipe  # evita el ciclo models -> services
+
+    ingredientes = sugerencia.get("ingredients") or [{"name": n, "quantity": ""} for n in sugerencia.get("ingredients_used", [])]
+    pasos = sugerencia.get("steps") or []
+    if not ingredientes or not pasos:
+        return None
+    datos = {**sugerencia, "ingredients": ingredientes, "steps": pasos}
+    guardada = save_ai_recipe(user.id, datos)
+    FavoriteRecipe.objects.get_or_create(user=user, recipe=guardada)
+    return guardada.external_id
