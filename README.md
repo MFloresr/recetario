@@ -45,7 +45,7 @@ python manage.py runserver
 
 La API queda en <http://localhost:8000/api/>. Comprobación rápida: <http://localhost:8000/api/health/> responde `{"status":"ok"}`.
 
-Tests (159):
+Tests (167):
 
 ```bash
 cd backend
@@ -65,7 +65,7 @@ npm run dev
 
 La app queda en <http://localhost:5173>. Crea una cuenta en «Crear cuenta» y empieza por añadir ingredientes.
 
-Otros comandos: `npm run test` (Vitest, 38 tests), `npm run lint`, `npm run format`, `npm run build`.
+Otros comandos: `npm run test` (Vitest, 47 tests), `npm run lint`, `npm run format`, `npm run build`.
 
 ## Variables de entorno
 
@@ -130,7 +130,7 @@ Para un proveedor con otro protocolo se escribe otra subclase de `AIRecipeServic
 | POST | `/api/auth/register/` | Crear cuenta |
 | POST | `/api/auth/login/` | Login (correo o usuario) → `access` y `refresh` |
 | POST | `/api/auth/token/refresh/` | Renovar el token de acceso |
-| GET | `/api/auth/me/` | Usuario actual |
+| GET · DELETE | `/api/auth/me/` | Usuario actual · borrar la cuenta (pide la contraseña) |
 | GET POST PATCH DELETE | `/api/ingredients/` | Despensa |
 | GET POST PATCH DELETE | `/api/shopping-list/` | Lista de la compra |
 | POST | `/api/shopping-list/clear-bought/` | Eliminar los comprados |
@@ -166,6 +166,14 @@ DATABASE_URL="postgres://recetario_app.<ref>:<clave>@aws-0-eu-west-2.pooler.supa
 **Conexiones.** El pooler en modo sesión admite 15 clientes a la vez. Por eso cada petición abre y cierra su conexión (`CONN_MAX_AGE=0`) y los hilos que usa la búsqueda para llamar a TheMealDB **no tocan la base de datos** (un test lo comprueba): una conexión por hilo agotaba el pooler con unas pocas búsquedas simultáneas.
 
 El registro de cuentas es público y tiene un límite de 20 por hora y dirección.
+
+**Privacidad y datos.** La web incluye un aviso de privacidad (`/privacy`) que hay que aceptar al registrarse, y cada usuario puede **borrar su cuenta y todos sus datos** desde el menú de su cuenta (`DELETE /api/auth/me/`, pide la contraseña). No usa cookies ni analítica: solo guarda en el navegador la sesión y el tema. El texto del aviso es el de un proyecto personal; si el uso crece o se monetiza, conviene revisarlo con un profesional.
+
+**Seguridad de la web.** `frontend/vercel.json` añade las cabeceras `Content-Security-Policy` (solo se permiten scripts propios, imágenes de TheMealDB y Wikipedia y peticiones a la API), `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Permissions-Policy`. Si cambia la dirección de la API o se añade otro origen de imágenes, hay que actualizar la política.
+
+**Pruebas y vigilancia automáticas** (GitHub Actions, carpeta `.github/workflows`):
+- `ci.yml`: en cada `push` y pull request pasa los tests del backend, comprueba que no faltan migraciones y pasa lint, tests y build del frontend.
+- `vigilancia.yml`: cada hora comprueba que la web y la API responden; si falla, GitHub te avisa por correo. Se puede lanzar a mano desde la pestaña Actions.
 
 ## Decisiones y límites conocidos
 
