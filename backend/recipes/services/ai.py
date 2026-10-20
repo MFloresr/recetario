@@ -196,9 +196,20 @@ class OpenAICompatibleService(AIRecipeService):
     def suggest_recipes(self, ingredients: list[str], constraints: dict | None = None) -> dict:
         c = constraints or {}
         tipo = c.get("meal_type")
+        consulta = (c.get("query") or "").strip()
+        if consulta:
+            cabecera = (
+                f"Busca recetas reales y conocidas de «{consulta}» (el plato exacto y variantes habituales). "
+                + (f"Ingredientes que tengo, por si ayudan: {', '.join(ingredients)}.\n" if ingredients else "\n")
+                + f"Propón hasta {c.get('max_results', 5)} recetas"
+            )
+        else:
+            cabecera = (
+                f"Ingredientes disponibles: {', '.join(ingredients)}.\n"
+                f"Propón hasta {c.get('max_results', 5)} recetas reales y conocidas que se puedan preparar sobre todo con ellos"
+            )
         prompt = (
-            f"Ingredientes disponibles: {', '.join(ingredients)}.\n"
-            f"Propón hasta {c.get('max_results', 5)} recetas reales y conocidas que se puedan preparar sobre todo con ellos"
+            cabecera
             + (f", todas de tipo «{tipo}»" if tipo else "")
             + ".\n"
             f"Dieta: {c.get('diet') or 'sin restricciones'}. Evitar: {', '.join(c.get('avoid') or []) or 'nada'}.\n"

@@ -71,6 +71,13 @@ export interface Recipe {
   /** Título en inglés, cuando la receta viene traducida. */
   original_title?: string
   meal_type?: string
+  /** Solo en las recetas de la IA guardadas (source === 'ai'). */
+  description?: string
+  estimated_minutes?: number | null
+  difficulty?: string
+  servings?: number | null
+  image_credit?: string
+  image_page?: string
   /** Cómo se tradujo al español. `complete: false` = alguna parte se quedó en inglés. */
   translation?: { lang: string; provider: string | null; complete: boolean }
 }

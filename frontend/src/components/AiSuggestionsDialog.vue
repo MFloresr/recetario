@@ -2,10 +2,23 @@
 import type { AiSuggestion } from '@/types/api'
 import { TIPOS_PARA_IA, tipoComida } from '@/utils/catalogo'
 
-defineProps<{ sugerencias: AiSuggestion[]; cargando: boolean; error: string }>()
+defineProps<{
+  sugerencias: AiSuggestion[]
+  cargando: boolean
+  error: string
+  /** Títulos de las recetas de la IA que ya están en el recetario. */
+  guardadas?: string[]
+  guardando?: string | null
+}>()
 const abierto = defineModel<boolean>({ default: false })
 const tipo = defineModel<string>('tipo', { default: '' })
-const emit = defineEmits<{ reintentar: []; 'añadir-faltantes': [sugerencia: AiSuggestion] }>()
+const consulta = defineModel<string>('consulta', { default: '' })
+const emit = defineEmits<{
+  reintentar: []
+  buscar: []
+  guardar: [sugerencia: AiSuggestion]
+  'añadir-faltantes': [sugerencia: AiSuggestion]
+}>()
 
 const COLOR_DIFICULTAD: Record<string, string> = {
   fácil: 'success',
@@ -26,13 +39,36 @@ function minutos(m: number): string {
     <v-card>
       <v-card-title class="d-flex align-center pt-4">
         <v-icon icon="mdi-creation" color="primary" class="mr-2" aria-hidden="true" />
-        Ideas con IA
+        Recetas con IA
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" aria-label="Cerrar" @click="abierto = false" />
       </v-card-title>
 
       <div class="px-6 pb-2">
-        <p class="text-body-2 text-medium-emphasis mb-2">¿Qué te apetece?</p>
+        <form class="d-flex align-start ga-2 mb-3" @submit.prevent="emit('buscar')">
+          <v-text-field
+            v-model="consulta"
+            label="Busca una receta concreta"
+            placeholder="Ej.: lasaña, tarta de queso, gazpacho"
+            prepend-inner-icon="mdi-magnify"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+            maxlength="120"
+            :disabled="cargando"
+          />
+          <v-btn
+            type="submit"
+            color="primary"
+            size="large"
+            icon="mdi-send"
+            aria-label="Buscar con la IA"
+            :disabled="cargando"
+          />
+        </form>
+        <p class="text-body-2 text-medium-emphasis mb-2">
+          Déjalo vacío para que te proponga ideas con lo que tienes en casa. ¿Qué te apetece?
+        </p>
         <v-chip-group
           v-model="tipo"
           mandatory
@@ -56,7 +92,7 @@ function minutos(m: number): string {
 
       <v-card-text>
         <div v-if="cargando" aria-live="polite">
-          <p class="text-medium-emphasis mb-3">La IA está pensando qué puedes cocinar…</p>
+          <p class="text-medium-emphasis mb-3">La IA está buscando recetas…</p>
           <v-skeleton-loader v-for="n in 2" :key="n" type="image, article" class="mb-3" />
         </div>
 
@@ -148,13 +184,35 @@ function minutos(m: number): string {
               </p>
             </v-card-text>
 
-            <v-card-actions v-if="s.missing_ingredients.length" class="px-4 pb-4">
+            <v-card-actions class="px-4 pb-4 flex-wrap ga-2">
               <v-btn
+                v-if="guardadas?.includes(s.title)"
+                variant="tonal"
+                color="primary"
+                prepend-icon="mdi-check"
+                disabled
+              >
+                Guardada en tu recetario
+              </v-btn>
+              <v-btn
+                v-else
+                variant="flat"
+                color="primary"
+                prepend-icon="mdi-heart-outline"
+                :loading="guardando === s.title"
+                :disabled="Boolean(guardando)"
+                @click="emit('guardar', s)"
+              >
+                Guardar en mi recetario
+              </v-btn>
+              <v-btn
+                v-if="s.missing_ingredients.length"
                 variant="tonal"
                 prepend-icon="mdi-cart-plus"
                 @click="emit('añadir-faltantes', s)"
-                >Añadir lo que falta a la compra</v-btn
               >
+                Añadir lo que falta a la compra
+              </v-btn>
             </v-card-actions>
           </v-card>
 
@@ -164,7 +222,10 @@ function minutos(m: number): string {
           </p>
         </div>
 
-        <p v-else class="text-medium-emphasis">La IA no ha propuesto nada con esos ingredientes.</p>
+        <p v-else class="text-medium-emphasis">
+          Escribe una receta arriba o añade ingredientes en la pantalla de inicio para que la IA te
+          proponga ideas.
+        </p>
       </v-card-text>
     </v-card>
   </v-dialog>

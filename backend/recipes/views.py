@@ -11,7 +11,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import FavoriteRecipe, Ingredient, ShoppingListItem
+from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
 from .serializers import (
     AIRecipeInputSerializer,
@@ -31,7 +31,7 @@ from .services.images import attach_images
 from .catalog import to_english
 from .services.localization import localize_recipe, localize_summaries
 from .services.matching import calculate_match, with_spanish_names
-from .services.recipes import get_recipe, save_recipe
+from .services.recipes import AI_SOURCE, get_recipe, is_ai_recipe_of, save_ai_recipe, save_recipe
 from .services.suggestions import build_suggestions, parse_ingredients
 from .services.translation import translate_strings
 
@@ -65,6 +65,7 @@ class MeView(APIView):
         """Borra la cuenta y todos sus datos (despensa, lista de la compra y favoritos) tras confirmar la contraseña."""
         entrada = DeleteAccountSerializer(data=request.data, context={"request": request})
         entrada.is_valid(raise_exception=True)
+        RecipeCache.objects.filter(external_id__startswith=f"ai-{request.user.id}-").delete()  # sus recetas de la IA
         request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -151,12 +152,20 @@ class RecipeDetailView(APIView):
     """Receta normalizada. Con `?ingredients=` añade cuánto coincide con la despensa."""
 
     def get(self, request, external_id):
-        receta = get_recipe(external_id, save=True)
+        propia_ia = external_id.startswith("ai-")
+        if propia_ia and not is_ai_recipe_of(external_id, request.user.id):
+            raise NotFound("No se encontró la receta.")  # las recetas de la IA son de su dueño
+        receta = get_recipe(external_id, save=not propia_ia)
         if receta is None:
             raise NotFound("No se encontró la receta.")
         pantry = parse_ingredients(request.query_params.get("ingredients", ""))
         coincidencia = None
-        if pantry:
+        if pantry and propia_ia:
+            coincidencia = calculate_match(pantry, receta["ingredients"], translate=False)
+            coincidencia["missing"] = [
+                {**i, "name_es": i["ingredient"]} for i in receta["ingredients"] if i["ingredient"] in coincidencia["missing_ingredients"]
+            ]
+        elif pantry:
             coincidencia = calculate_match(pantry, receta["ingredients"])
             coincidencia["missing"] = with_spanish_names(receta["ingredients"], coincidencia["missing_ingredients"])
         lang = request.query_params.get("lang", "")
@@ -178,13 +187,23 @@ class FavoriteViewSet(
     serializer_class = FavoriteSerializer
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
+    def perform_destroy(self, instance):
+        # Una receta de la IA solo existe para su dueño: al quitarla de favoritos se borra del todo
+        if instance.recipe.source == AI_SOURCE:
+            instance.recipe.delete()
+        else:
+            instance.delete()
+
     def create(self, request, *args, **kwargs):
         entrada = FavoriteCreateSerializer(data=request.data)
         entrada.is_valid(raise_exception=True)
-        receta = get_recipe(entrada.validated_data["external_id"], save=False)
-        if receta is None:
-            raise NotFound("No se encontró la receta.")
-        guardada = save_recipe(receta)
+        if entrada.validated_data.get("recipe"):
+            guardada = save_ai_recipe(request.user.id, entrada.validated_data["recipe"])
+        else:
+            receta = get_recipe(entrada.validated_data["external_id"], save=False)
+            if receta is None:
+                raise NotFound("No se encontró la receta.")
+            guardada = save_recipe(receta)
         try:
             with transaction.atomic():
                 favorito = FavoriteRecipe.objects.create(
@@ -211,7 +230,7 @@ class AISuggestionsView(AIBaseView):
         servicio = ai_service.get_ai_service()
         resultado = servicio.suggest_recipes(
             d["ingredients"],
-            {"max_results": d["max_results"], "diet": d["diet"], "avoid": d["avoid"], "meal_type": d["meal_type"]},
+            {"max_results": d["max_results"], "diet": d["diet"], "avoid": d["avoid"], "meal_type": d["meal_type"], "query": d["query"]},
         )
         # Foto orientativa de Wikipedia cuando el plato tiene artículo propio (si no, `image` es null)
         resultado["suggestions"] = attach_images(resultado["suggestions"])

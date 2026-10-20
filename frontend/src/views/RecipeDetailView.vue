@@ -41,6 +41,7 @@ const esFavorita = computed(() =>
   receta.value ? recipes.esFavorito(receta.value.external_id) : false,
 )
 const tipo = computed(() => tipoComida(receta.value?.meal_type))
+const esIa = computed(() => receta.value?.source === 'ai')
 const pasos = computed(() => pasosDeInstrucciones(receta.value?.instructions ?? ''))
 const faltantes = computed(() => receta.value?.match?.missing ?? [])
 const faltanSet = computed(
@@ -134,11 +135,25 @@ async function adaptar() {
         }}</v-chip>
         <v-chip v-if="receta.category" prepend-icon="mdi-tag-outline">{{ receta.category }}</v-chip>
         <v-chip v-if="receta.area" prepend-icon="mdi-earth">{{ receta.area }}</v-chip>
-        <v-chip prepend-icon="mdi-database-outline">Fuente: TheMealDB</v-chip>
+        <template v-if="esIa">
+          <v-chip v-if="receta.estimated_minutes" prepend-icon="mdi-clock-outline"
+            >{{ receta.estimated_minutes }} min</v-chip
+          >
+          <v-chip v-if="receta.difficulty" prepend-icon="mdi-chef-hat"
+            >Dificultad {{ receta.difficulty }}</v-chip
+          >
+          <v-chip v-if="receta.servings" prepend-icon="mdi-account-multiple-outline"
+            >{{ receta.servings }} {{ receta.servings === 1 ? 'ración' : 'raciones' }}</v-chip
+          >
+          <v-chip prepend-icon="mdi-creation">Receta generada por IA</v-chip>
+        </template>
+        <v-chip v-else prepend-icon="mdi-database-outline">Fuente: TheMealDB</v-chip>
         <v-chip v-if="receta.translation?.provider" prepend-icon="mdi-translate">
           Traducción automática
         </v-chip>
       </div>
+
+      <p v-if="esIa && receta.description" class="text-body-1 mb-4">{{ receta.description }}</p>
 
       <v-alert
         v-if="receta.translation && !receta.translation.complete"

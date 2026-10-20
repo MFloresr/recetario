@@ -59,6 +59,11 @@ def localize_recipe(receta: dict, lang: str, match: dict | None = None) -> dict:
     """Receta completa en español: título, categoría, país, ingredientes, medidas e instrucciones."""
     if lang not in SUPPORTED:
         return receta
+    if receta.get("source") == "ai":  # ya está en español: no hay nada que traducir
+        salida = dict(receta)
+        if match is not None:
+            salida["match"] = match
+        return salida
     nombres = list(dict.fromkeys(i["ingredient"] for i in receta["ingredients"]))
     conocidos, desconocidos = _ingredient_names(nombres)
     pasos = _lines(receta.get("instructions", ""))

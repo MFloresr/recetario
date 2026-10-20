@@ -1,5 +1,6 @@
 """Acceso a recetas: caché en base de datos (solo al abrir en detalle o marcar favorita) y caché en memoria."""
 
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 
 from django.core.cache import cache
@@ -7,13 +8,17 @@ from django.core.cache import cache
 from ..exceptions import ExternalServiceError
 
 from ..models import RecipeCache
+from ..normalization import normalize_name
 from .themealdb import SOURCE, TheMealDBClient
 
 MEMORY_TTL = 60 * 60  # 1 hora
 
 
+AI_SOURCE = "ai"
+
+
 def recipe_to_dict(recipe: RecipeCache) -> dict:
-    return {
+    datos = {
         "external_id": recipe.external_id,
         "title": recipe.title,
         "image": recipe.image,
@@ -23,13 +28,67 @@ def recipe_to_dict(recipe: RecipeCache) -> dict:
         "ingredients": recipe.ingredients,
         "source": recipe.source,
     }
+    if recipe.source == AI_SOURCE:  # lo que la IA añade: tipo de comida, tiempo, dificultad, raciones, foto
+        extra = recipe.raw_data or {}
+        datos.update(
+            {
+                "description": extra.get("description", ""),
+                "meal_type": extra.get("meal_type", "otro"),
+                "estimated_minutes": extra.get("estimated_minutes"),
+                "difficulty": extra.get("difficulty", ""),
+                "servings": extra.get("servings"),
+                "image_credit": extra.get("image_credit", ""),
+                "image_page": extra.get("image_page", ""),
+            }
+        )
+    return datos
+
+
+def ai_recipe_id(user_id: int, titulo: str, ingredientes: list[dict]) -> str:
+    """Identificador propio de cada usuario: «ai-<usuario>-<huella>». Así nadie puede pisar la receta de otro."""
+    nombres = sorted(normalize_name(i["name"]) for i in ingredientes)
+    huella = hashlib.sha1(("|".join([normalize_name(titulo), *nombres])).encode("utf-8")).hexdigest()[:16]
+    return f"ai-{user_id}-{huella}"
+
+
+def is_ai_recipe_of(external_id: str, user_id: int) -> bool:
+    return external_id.startswith(f"ai-{user_id}-")
+
+
+def save_ai_recipe(user_id: int, datos: dict) -> RecipeCache:
+    """Guarda una receta propuesta por la IA (ya en español) para el recetario de un usuario."""
+    imagen = datos.get("image") or {}
+    objeto, _ = RecipeCache.objects.update_or_create(
+        external_id=ai_recipe_id(user_id, datos["title"], datos["ingredients"]),
+        defaults={
+            "source": AI_SOURCE,
+            "title": datos["title"],
+            "image": imagen.get("url", ""),
+            "category": "",
+            "area": "",
+            "instructions": "\n".join(datos["steps"]),
+            "ingredients": [{"ingredient": i["name"], "measure": i.get("quantity", "")} for i in datos["ingredients"]],
+            "raw_data": {
+                "description": datos.get("description", ""),
+                "meal_type": datos.get("meal_type", "otro"),
+                "estimated_minutes": datos.get("estimated_minutes"),
+                "difficulty": datos.get("difficulty", ""),
+                "servings": datos.get("servings"),
+                "image_credit": imagen.get("credit", ""),
+                "image_page": imagen.get("page", ""),
+            },
+        },
+    )
+    return objeto
 
 
 def fetch_recipe(external_id: str, client: TheMealDBClient | None = None) -> dict | None:
     """Receta normalizada desde la base de datos, la memoria o TheMealDB. No guarda nada en la base de datos."""
-    en_bd = RecipeCache.objects.filter(external_id=external_id, source=SOURCE).first()
+    en_bd = RecipeCache.objects.filter(external_id=external_id).first()
     if en_bd:
         return recipe_to_dict(en_bd)
+    if external_id.startswith("ai-"):
+        return None  # las recetas de la IA solo existen si se guardaron
     clave = f"meal:{external_id}"
     receta = cache.get(clave)
     if receta is None:

@@ -1,3 +1,4 @@
+import { flushPromises } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import AiSuggestionsDialog from '@/components/AiSuggestionsDialog.vue'
 import { montar } from '@/test/utils'
@@ -97,5 +98,37 @@ describe('AiSuggestionsDialog', () => {
     )
     reintentar?.click()
     expect(wrapper.emitted('reintentar')).toHaveLength(1)
+  })
+
+  it('permite buscar una receta concreta escribiéndola', async () => {
+    const { wrapper } = await montarDialogo([])
+    const campo = document.body.querySelector('input[type="text"]') as HTMLInputElement
+    campo.value = 'lasaña'
+    campo.dispatchEvent(new Event('input'))
+    document.body.querySelector('form')?.dispatchEvent(new Event('submit'))
+    await flushPromises()
+    expect(wrapper.emitted('update:consulta')?.[0]).toEqual(['lasaña'])
+    expect(wrapper.emitted('buscar')).toHaveLength(1)
+  })
+
+  it('sin recetas invita a escribir una o a añadir ingredientes', async () => {
+    await montarDialogo([])
+    expect(document.body.textContent).toContain('Escribe una receta arriba o añade ingredientes')
+  })
+
+  it('el botón guardar avisa con la receta', async () => {
+    const { wrapper } = await montarDialogo([tortilla])
+    const boton = [...document.body.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Guardar en mi recetario'),
+    )
+    boton?.click()
+    expect(wrapper.emitted('guardar')?.[0]?.[0]).toMatchObject({ title: 'Tortilla de patatas' })
+  })
+
+  it('si la receta ya está guardada lo indica y no deja guardarla otra vez', async () => {
+    await montarDialogo([tortilla], { guardadas: ['Tortilla de patatas'] })
+    expect(document.body.textContent).toContain('Guardada en tu recetario')
+    const botones = [...document.body.querySelectorAll('button')].map((b) => b.textContent ?? '')
+    expect(botones.some((t) => t.includes('Guardar en mi recetario'))).toBe(false)
   })
 })

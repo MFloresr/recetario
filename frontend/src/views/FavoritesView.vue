@@ -100,6 +100,18 @@ async function quitar() {
             <v-card-subtitle>{{
               [f.recipe.category, f.recipe.area].filter(Boolean).join(' · ')
             }}</v-card-subtitle>
+            <div v-if="f.recipe.source === 'ai'" class="d-flex flex-wrap ga-1 mt-2">
+              <v-chip size="x-small" prepend-icon="mdi-creation">IA</v-chip>
+              <v-chip
+                v-if="f.recipe.estimated_minutes"
+                size="x-small"
+                prepend-icon="mdi-clock-outline"
+                >{{ f.recipe.estimated_minutes }} min</v-chip
+              >
+              <v-chip v-if="f.recipe.difficulty" size="x-small" prepend-icon="mdi-chef-hat">{{
+                f.recipe.difficulty
+              }}</v-chip>
+            </div>
           </v-card-item>
           <v-card-text class="flex-grow-1">
             <v-textarea

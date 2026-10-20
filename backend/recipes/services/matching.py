@@ -28,12 +28,13 @@ def ingredient_matches(pantry_item: str, recipe_ingredient: str) -> bool:
     return bool(a) and bool(b) and (a <= b or b <= a)
 
 
-def calculate_match(pantry: list[str], recipe_ingredients: list[dict]) -> dict:
+def calculate_match(pantry: list[str], recipe_ingredients: list[dict], translate: bool = True) -> dict:
     """Devuelve ingredientes que coinciden, los que faltan y el porcentaje (0-100) de coincidencia.
 
     `pantry` son nombres del usuario (en español o inglés); se traducen antes de comparar.
     """
-    despensa = [to_english(nombre) for nombre in pantry if nombre and nombre.strip()]
+    # Las recetas de TheMealDB están en inglés (se traduce la despensa); las de la IA ya están en español
+    despensa = [to_english(nombre) if translate else normalize_name(nombre) for nombre in pantry if nombre and nombre.strip()]
     vistos: set[str] = set()
     matched: list[str] = []
     missing: list[str] = []

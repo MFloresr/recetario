@@ -116,6 +116,29 @@ export const favoritesApi = {
         { params: { lang: IDIOMA } },
       )
     ).data,
+  /** Guarda en el recetario una receta propuesta por la IA. */
+  createFromAi: async (s: AiSuggestion) =>
+    (
+      await api.post<Favorite>(
+        '/favorites/',
+        {
+          recipe: {
+            title: s.title,
+            description: s.description,
+            meal_type: s.meal_type,
+            servings: s.servings,
+            estimated_minutes: s.estimated_minutes,
+            difficulty: s.difficulty,
+            ingredients: s.ingredients.length
+              ? s.ingredients
+              : s.ingredients_used.map((name) => ({ name, quantity: '' })),
+            steps: s.steps,
+            image: s.image,
+          },
+        },
+        { params: { lang: IDIOMA } },
+      )
+    ).data,
   updateNotes: async (id: number, notes: string) =>
     (await api.patch<Favorite>(`/favorites/${id}/`, { notes }, { params: { lang: IDIOMA } })).data,
   remove: async (id: number) => {
@@ -126,7 +149,7 @@ export const favoritesApi = {
 // --- IA ---
 
 export const aiApi = {
-  suggestions: async (ingredientes: string[], tipoComida = '', maxResults = 5) =>
+  suggestions: async (ingredientes: string[], tipoComida = '', consulta = '', maxResults = 5) =>
     (
       await api.post<{ suggestions: AiSuggestion[] }>(
         '/ai/suggestions/',
@@ -134,6 +157,7 @@ export const aiApi = {
           ingredients: ingredientes,
           max_results: maxResults,
           meal_type: tipoComida,
+          query: consulta,
         },
         { timeout: TIEMPO_IA },
       )

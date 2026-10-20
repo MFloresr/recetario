@@ -33,6 +33,8 @@ const eliminando = ref(false)
 const iaAbierta = ref(false)
 const iaError = ref('')
 const iaTipo = ref('')
+const iaConsulta = ref('')
+const guardandoIa = ref<string | null>(null)
 const shopping = useShoppingListStore()
 
 const disponibles = computed(() => pantry.items.filter((i) => i.in_pantry))
@@ -99,13 +101,33 @@ async function buscar() {
 }
 
 async function sugerirConIa() {
-  if (!pantry.nombresDisponibles.length) return
   iaAbierta.value = true
   iaError.value = ''
+  const consulta = iaConsulta.value.trim()
+  if (!consulta && !pantry.nombresDisponibles.length) {
+    recipes.sugerenciasIa = [] // sin ingredientes ni búsqueda no hay nada que pedir: el diálogo invita a escribir
+    return
+  }
   try {
-    await recipes.pedirSugerenciasIa(pantry.nombresDisponibles, iaTipo.value)
+    await recipes.pedirSugerenciasIa(pantry.nombresDisponibles, iaTipo.value, consulta)
   } catch (e) {
     iaError.value = mensajeDeError(e)
+  }
+}
+
+const recetasIaGuardadas = computed(() =>
+  recipes.favoritos.filter((f) => f.recipe.source === 'ai').map((f) => f.recipe.title),
+)
+
+async function guardarRecetaIa(receta: AiSuggestion) {
+  guardandoIa.value = receta.title
+  try {
+    await recipes.guardarRecetaIa(receta)
+    ui.mostrarAviso('Receta guardada en tu recetario', 'success')
+  } catch (e) {
+    notificarError(e)
+  } finally {
+    guardandoIa.value = null
   }
 }
 
@@ -174,7 +196,6 @@ watch(iaTipo, () => {
           size="x-large"
           prepend-icon="mdi-creation"
           class="flex-grow-1"
-          :disabled="!disponibles.length"
           @click="sugerirConIa"
         >
           Sugiéreme algo con IA
@@ -270,9 +291,14 @@ watch(iaTipo, () => {
     <AiSuggestionsDialog
       v-model="iaAbierta"
       v-model:tipo="iaTipo"
+      v-model:consulta="iaConsulta"
+      :guardadas="recetasIaGuardadas"
+      :guardando="guardandoIa"
       :sugerencias="recipes.sugerenciasIa"
       :cargando="recipes.cargandoIa"
       :error="iaError"
+      @buscar="sugerirConIa"
+      @guardar="guardarRecetaIa"
       @añadir-faltantes="añadirFaltantesIa"
       @reintentar="sugerirConIa"
     />

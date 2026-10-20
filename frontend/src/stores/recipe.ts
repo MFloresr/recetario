@@ -90,6 +90,17 @@ export const useRecipeStore = defineStore('recipe', () => {
     return !existente
   }
 
+  /** Guarda en el recetario una receta de la IA (queda como favorita, con todos sus datos). */
+  async function guardarRecetaIa(receta: AiSuggestion) {
+    try {
+      const favorito = await favoritesApi.createFromAi(receta)
+      favoritos.value = [favorito, ...favoritos.value]
+      return favorito
+    } catch (e) {
+      throw aApiError(e)
+    }
+  }
+
   async function guardarNotas(id: number, notas: string) {
     try {
       const actualizado = await favoritesApi.updateNotes(id, notas)
@@ -99,11 +110,11 @@ export const useRecipeStore = defineStore('recipe', () => {
     }
   }
 
-  async function pedirSugerenciasIa(ingredientes: string[], tipoComida = '') {
+  async function pedirSugerenciasIa(ingredientes: string[], tipoComida = '', consulta = '') {
     cargandoIa.value = true
     sugerenciasIa.value = []
     try {
-      sugerenciasIa.value = await aiApi.suggestions(ingredientes, tipoComida)
+      sugerenciasIa.value = await aiApi.suggestions(ingredientes, tipoComida, consulta)
     } catch (e) {
       throw aApiError(e)
     } finally {
@@ -142,6 +153,7 @@ export const useRecipeStore = defineStore('recipe', () => {
     obtenerDetalle,
     cargarFavoritos,
     añadirFavorito,
+    guardarRecetaIa,
     quitarFavorito,
     alternarFavorito,
     guardarNotas,

@@ -5,8 +5,9 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import FavoriteRecipe, Ingredient, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
-from .services.ai import MEAL_TYPES
+from .services.ai import MEAL_TYPES, normalize_difficulty, normalize_meal_type
 from .services.localization import localize_recipe
+from .services.recipes import recipe_to_dict
 
 User = get_user_model()
 
@@ -151,16 +152,61 @@ class FavoriteSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         datos = super().to_representation(instance)
+        datos["recipe"] = recipe_to_dict(instance.recipe)  # incluye lo extra de las recetas de la IA
         peticion = self.context.get("request")
         lang = peticion.query_params.get("lang", "") if peticion is not None else ""
         if lang:
-            datos["recipe"] = localize_recipe(dict(datos["recipe"]), lang)
+            datos["recipe"] = localize_recipe(datos["recipe"], lang)
         return datos
 
 
+class _RecipeIngredientIn(serializers.Serializer):
+    name = serializers.CharField(max_length=120)
+    quantity = serializers.CharField(allow_blank=True, required=False, default="", max_length=60)
+
+
+class _AIImageSerializer(serializers.Serializer):
+    url = serializers.URLField(max_length=500)
+    credit = serializers.CharField(allow_blank=True, required=False, default="", max_length=100)
+    page = serializers.URLField(allow_blank=True, required=False, default="", max_length=500)
+
+    def validate_url(self, value):
+        if not value.startswith("https://"):
+            raise serializers.ValidationError("La imagen debe ser https.")
+        return value
+
+
+class AISavedRecipeSerializer(serializers.Serializer):
+    """Una receta propuesta por la IA que el usuario quiere guardar en su recetario."""
+
+    title = serializers.CharField(max_length=200)
+    description = serializers.CharField(allow_blank=True, required=False, default="", max_length=500)
+    meal_type = serializers.CharField(allow_blank=True, required=False, default="otro", max_length=40)
+    servings = serializers.IntegerField(min_value=1, max_value=100, required=False, allow_null=True, default=None)
+    estimated_minutes = serializers.IntegerField(min_value=0, max_value=3000, required=False, allow_null=True, default=None)
+    difficulty = serializers.CharField(allow_blank=True, required=False, default="", max_length=20)
+    ingredients = serializers.ListField(child=_RecipeIngredientIn(), min_length=1, max_length=60)
+    steps = serializers.ListField(child=serializers.CharField(max_length=1500), min_length=1, max_length=40)
+    image = _AIImageSerializer(required=False, allow_null=True, default=None)
+
+    def validate_meal_type(self, value):
+        return normalize_meal_type(value)
+
+    def validate_difficulty(self, value):
+        return normalize_difficulty(value)
+
+
 class FavoriteCreateSerializer(serializers.Serializer):
-    external_id = serializers.CharField(max_length=50)
+    """O bien `external_id` (receta de TheMealDB) o bien `recipe` (receta de la IA)."""
+
+    external_id = serializers.CharField(max_length=50, required=False)
+    recipe = AISavedRecipeSerializer(required=False)
     notes = serializers.CharField(allow_blank=True, required=False, default="")
+
+    def validate(self, attrs):
+        if bool(attrs.get("external_id")) == bool(attrs.get("recipe")):
+            raise serializers.ValidationError("Indica `external_id` o `recipe`, pero no los dos.")
+        return attrs
 
 
 class SuggestionsQuerySerializer(serializers.Serializer):
@@ -187,8 +233,16 @@ class AIRecipeInputSerializer(serializers.Serializer):
 
 
 class AISuggestionsInputSerializer(serializers.Serializer):
-    ingredients = serializers.ListField(child=serializers.CharField(max_length=100), min_length=1, max_length=60)
+    """Ideas a partir de los ingredientes, de una búsqueda concreta («lasaña») o de ambas cosas."""
+
+    ingredients = serializers.ListField(child=serializers.CharField(max_length=100), required=False, default=list, max_length=60)
+    query = serializers.CharField(allow_blank=True, required=False, default="", max_length=120)
     max_results = serializers.IntegerField(min_value=1, max_value=10, default=5)
     meal_type = serializers.ChoiceField(choices=MEAL_TYPES, required=False, allow_blank=True, default="")
     diet = serializers.CharField(allow_blank=True, required=False, default="", max_length=100)
     avoid = serializers.ListField(child=serializers.CharField(max_length=100), required=False, default=list, max_length=30)
+
+    def validate(self, attrs):
+        if not attrs["ingredients"] and not attrs["query"].strip():
+            raise serializers.ValidationError("Indica ingredientes o escribe qué receta buscas.")
+        return attrs
