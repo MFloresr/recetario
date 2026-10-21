@@ -3,6 +3,7 @@ import json
 import pytest
 import requests
 
+from recipes.services.images import FOTOS_RESPALDO
 from recipes.tests.conftest import FakeResponse
 
 SUGERENCIAS = {
@@ -161,7 +162,7 @@ def test_receta_completa_con_foto_tipo_y_dificultad(client, fake_ai, wikipedia):
     assert tortilla["difficulty"] == "fácil" and tortilla["estimated_minutes"] == 40 and tortilla["servings"] == 4
     assert tortilla["ingredients"] == [{"name": "huevos", "quantity": "6"}, {"name": "patatas", "quantity": "600 g"}]
     assert tortilla["image"] == {"url": "https://upload.wikimedia.org/tortilla.jpg", "credit": "Wikipedia", "page": "https://es.wikipedia.org/wiki/Tortilla_de_patatas"}
-    assert batido["meal_type"] == "batido" and batido["image"] is None  # sin artículo fiable no hay foto
+    assert batido["meal_type"] == "batido" and batido["image"] == FOTOS_RESPALDO["batido"]  # sin foto fiable del plato, la de respaldo de su tipo
     assert batido["ingredients"] == []
 
 
@@ -189,12 +190,12 @@ def test_tipo_de_comida_invalido_en_la_entrada_da_400(client, fake_ai):
     assert fake_ai.calls == 0
 
 
-def test_si_wikipedia_falla_las_recetas_salen_sin_foto(client, fake_ai, wikipedia):
+def test_si_las_fuentes_fallan_las_recetas_salen_con_la_foto_de_respaldo(client, fake_ai, wikipedia):
     wikipedia.fail = True
     fake_ai.queue = [json.dumps(COMPLETA)]
     r = client.post("/api/ai/suggestions/", ENTRADA, format="json")
     assert r.status_code == 200
-    assert [s["image"] for s in r.json()["suggestions"]] == [None, None]
+    assert all(s["image"]["credit"].endswith("(Unsplash)") for s in r.json()["suggestions"])
 
 
 # --- Modelos de reserva cuando el principal está saturado ---

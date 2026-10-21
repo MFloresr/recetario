@@ -35,6 +35,22 @@ CACHE_TTL = 60 * 60 * 24 * 7
 HEADERS = {"User-Agent": "Recetario/1.0 (proyecto personal; https://es.wikipedia.org/wiki/Wikipedia:Bot)"}
 RELLENO = {"de", "del", "la", "el", "los", "las", "con", "y", "al", "a", "en", "un", "una", "para", "su", "sus"}
 
+# Foto de respaldo por tipo de comida: se usa solo cuando ninguna fuente encuentra una foto del plato, para que toda receta tenga foto.
+# Son fotos de Unsplash (enlazadas, con su autoría). Siempre es una foto de muestra de ese tipo de comida, no del plato.
+FOTOS_RESPALDO = {
+    "desayuno": {"url": "https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&w=1080&q=80", "credit": "Rachel Park (Unsplash)", "page": "https://unsplash.com/photos/breakfast-spread-with-waffles-eggs-and-juice-hrlvr2ZlUNk"},
+    "almuerzo": {"url": "https://images.unsplash.com/photo-1599118732532-f1cdb1ae7389?auto=format&fit=crop&w=1080&q=80", "credit": "Michal Balog (Unsplash)", "page": "https://unsplash.com/photos/cooked-food-on-white-ceramic-plate-ihdvOzjH4zs"},
+    "merienda": {"url": "https://images.unsplash.com/photo-1766185387804-e5da118064f7?auto=format&fit=crop&w=1080&q=80", "credit": "Stacy (Unsplash)", "page": "https://unsplash.com/photos/stack-of-cookies-next-to-a-white-mug-F3hRk3PL1Mc"},
+    "cena": {"url": "https://images.unsplash.com/photo-1673646960449-45c61e27ef47?auto=format&fit=crop&w=1080&q=80", "credit": "Natalia Gusakova (Unsplash)", "page": "https://unsplash.com/photos/a-white-plate-topped-with-meat-and-vegetables-qIUkWt00Uoc"},
+    "postre": {"url": "https://images.unsplash.com/photo-1708175313856-8573b2bf8a3a?auto=format&fit=crop&w=1080&q=80", "credit": "Med Wael Laraiedh (Unsplash)", "page": "https://unsplash.com/photos/a-piece-of-cheesecake-on-a-white-plate-hszGPnZGB3A"},
+    "batido": {"url": "https://images.unsplash.com/photo-1622597468620-656aa1f981ea?auto=format&fit=crop&w=1080&q=80", "credit": "Jugoslocos (Unsplash)", "page": "https://unsplash.com/photos/strawberry-shake-on-clear-drinking-glass-zpv8D8DOShs"},
+    "snack": {"url": "https://images.unsplash.com/photo-1490818387583-1baba5e638af?auto=format&fit=crop&w=1080&q=80", "credit": "Brooke Lark (Unsplash)", "page": "https://unsplash.com/photos/variety-of-sliced-fruits-08bOYnH_r_E"},
+    "entrante": {"url": "https://images.unsplash.com/photo-1577906096429-f73c2c312435?auto=format&fit=crop&w=1080&q=80", "credit": "Sebastian Coman Photography (Unsplash)", "page": "https://unsplash.com/photos/small-appetizers-are-arranged-on-a-silver-plate-ZGgIYaL9lYk"},
+    "bebida": {"url": "https://images.unsplash.com/photo-1586734565008-fbdbc166fd6c?auto=format&fit=crop&w=1080&q=80", "credit": "Vinicius Amano (Unsplash)", "page": "https://unsplash.com/photos/clear-drinking-glass-with-ice-cubes-V1zGiNVPumM"},
+    "otro": {"url": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1080&q=80", "credit": "Brooke Lark (Unsplash)", "page": "https://unsplash.com/photos/pasta-dish-on-brown-plate-4J059aGa5s4"},
+}
+FOTOS_RESPALDO["plato principal"] = FOTOS_RESPALDO["cena"]
+
 
 def _tokens(texto: str) -> set[str]:
     return {t for t in normalize_name(texto).split() if t not in RELLENO}
@@ -199,12 +215,21 @@ def find_dish_image(title: str, photo_query: str = "", photo_query_en: str = "",
     return None
 
 
+def find_dish_image_or_fallback(title: str, photo_query: str = "", photo_query_en: str = "", meal_type: str = "") -> dict:
+    """Foto de muestra del plato; si ninguna fuente da una fiable, la de respaldo de su tipo de comida (nunca None)."""
+    foto = find_dish_image(title, photo_query, photo_query_en)
+    return foto or FOTOS_RESPALDO.get(normalize_name(meal_type), FOTOS_RESPALDO["otro"])
+
+
 def attach_images(suggestions: list[dict]) -> list[dict]:
-    """Añade `image` a cada sugerencia (en paralelo). Si no hay foto fiable, `image` es None."""
+    """Añade `image` a cada sugerencia (en paralelo). Siempre hay foto: si ninguna fuente da una fiable, la de respaldo de su tipo de comida."""
     if not suggestions:
         return suggestions
     with ThreadPoolExecutor(max_workers=5) as pool:
         fotos = list(
-            pool.map(lambda s: find_dish_image(s["title"], s.get("photo_query", ""), s.get("photo_query_en", "")), suggestions)
+            pool.map(
+                lambda s: find_dish_image_or_fallback(s["title"], s.get("photo_query", ""), s.get("photo_query_en", ""), s.get("meal_type", "")),
+                suggestions,
+            )
         )
     return [{**s, "image": foto} for s, foto in zip(suggestions, fotos)]

@@ -1,6 +1,6 @@
 import pytest
 
-from recipes.services.images import _is_same_dish, attach_images, find_dish_image
+from recipes.services.images import FOTOS_RESPALDO, _is_same_dish, attach_images, find_dish_image
 
 
 def pagina(titulo, miniatura="https://upload.wikimedia.org/x.jpg", index=1):
@@ -66,5 +66,11 @@ def test_adjuntar_fotos_a_las_sugerencias(wikipedia):
     wikipedia.pages = [pagina("Paella")]
     r = attach_images([{"title": "Paella"}, {"title": "Plato inventado sin artículo"}])
     assert r[0]["image"]["credit"] == "Wikipedia"
-    assert r[1]["image"] is None
+    assert r[1]["image"] == FOTOS_RESPALDO["otro"]  # sin foto fiable, la de respaldo: toda receta tiene foto
     assert attach_images([]) == []
+
+
+def test_la_foto_de_respaldo_es_la_del_tipo_de_comida(wikipedia):
+    r = attach_images([{"title": "Plato inventado", "meal_type": "postre"}, {"title": "Otro inventado", "meal_type": "Plato principal"}])
+    assert r[0]["image"] == FOTOS_RESPALDO["postre"]
+    assert r[1]["image"] == FOTOS_RESPALDO["plato principal"]
