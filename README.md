@@ -86,6 +86,7 @@ Otros comandos: `npm run test` (Vitest, 59 tests), `npm run lint`, `npm run form
 | `TRANSLATION_PROVIDER` | `auto` (IA si hay clave, si no MyMemory), `mymemory`, `ai` o `none`. |
 | `MYMEMORY_EMAIL` | Opcional: tu correo sube el cupo diario gratuito de MyMemory de 5.000 a 50.000 caracteres. |
 | `PEXELS_API_KEY` | Opcional: clave gratuita de Pexels para fotos de muestra de más platos. |
+| `UNSPLASH_ACCESS_KEY` | Opcional: clave gratuita de Unsplash; reserva de fotos si Pexels no responde. |
 
 **`frontend/.env`**:
 

@@ -26,6 +26,8 @@ class FakeWikipedia:
         self.openverse_calls: list[dict] = []
         self.calls: list[dict] = []
         self.pexels_calls: list[dict] = []
+        self.unsplash: list[dict] = []
+        self.unsplash_calls: list[dict] = []
         self.fail = False
 
     def get(self, url, params=None, **kwargs):
@@ -34,6 +36,9 @@ class FakeWikipedia:
         if "openverse.org" in url:
             self.openverse_calls.append(params or {})
             return FakeResponse({"results": self.openverse})
+        if "unsplash.com" in url:
+            self.unsplash_calls.append({"params": params, "headers": kwargs.get("headers")})
+            return FakeResponse({"results": self.unsplash})
         if "pexels.com" in url:
             self.pexels_calls.append({"params": params, "headers": kwargs.get("headers")})
             return FakeResponse({"photos": self.pexels})
@@ -53,7 +58,7 @@ def bloquear_red(monkeypatch, wikipedia):
     """Ningún test sale a internet: solo responden las fotos simuladas y los fakes que cada test pida."""
 
     def get(self, url, **kw):
-        if "wikipedia.org" in url or "commons.wikimedia.org" in url or "pexels.com" in url or "openverse.org" in url:
+        if "wikipedia.org" in url or "commons.wikimedia.org" in url or "pexels.com" in url or "unsplash.com" in url or "openverse.org" in url:
             return wikipedia.get(url, **kw)
         raise RuntimeError(f"Llamada de red real en un test: {url}")
 

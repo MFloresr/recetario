@@ -4,8 +4,9 @@ Se prueban varias fuentes, de la más precisa a la más amplia, y se devuelve la
 
 1. **Wikipedia** (libre, sin clave): la foto principal del artículo del plato.
 2. **Pexels** (gratuita, con clave opcional `PEXELS_API_KEY`): fotos de comida de calidad, con crédito al autor.
-3. **Openverse** (fotos con licencia libre, sin clave): solo se acepta una foto si su título nombra todo el plato.
-4. **Wikimedia Commons** (libre, sin clave): fotos cuyo nombre de archivo coincide con el plato.
+3. **Unsplash** (gratuita, con clave opcional `UNSPLASH_ACCESS_KEY`): reserva si Pexels no está disponible.
+4. **Openverse** (fotos con licencia libre, sin clave): solo se acepta una foto si su título nombra todo el plato.
+5. **Wikimedia Commons** (libre, sin clave): fotos cuyo nombre de archivo coincide con el plato.
 
 Es mejor no mostrar ninguna foto que mostrar la de otro plato: Wikipedia y Commons solo se aceptan si el nombre
 coincide. Siempre es una foto de muestra, y cada una enlaza a su origen (autoría y licencia).
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 WIKIPEDIA_API = "https://es.wikipedia.org/w/api.php"
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 PEXELS_API = "https://api.pexels.com/v1/search"
+UNSPLASH_API = "https://api.unsplash.com/search/photos"
 OPENVERSE_API = "https://api.openverse.org/v1/images/"
 TIMEOUT = 6
 CACHE_TTL = 60 * 60 * 24 * 7
@@ -99,6 +101,25 @@ def _from_pexels(consulta: str, session) -> dict | None:
     return {"url": url, "credit": f"{foto.get('photographer', 'Pexels')} (Pexels)", "page": foto.get("url", "")}
 
 
+def _from_unsplash(consulta: str, session) -> dict | None:
+    clave = getattr(settings, "UNSPLASH_ACCESS_KEY", "")
+    if not clave or not consulta:
+        return None
+    respuesta = _get(
+        session, UNSPLASH_API, params={"query": f"{consulta} food dish", "per_page": 1, "orientation": "landscape"},
+        headers={"Authorization": f"Client-ID {clave}"},
+    )
+    fotos = respuesta.json().get("results") or []
+    if not fotos:
+        return None
+    foto = fotos[0]
+    url = (foto.get("urls") or {}).get("regular") or (foto.get("urls") or {}).get("small")
+    if not url:
+        return None
+    autor = (foto.get("user") or {}).get("name") or "Unsplash"
+    return {"url": url, "credit": f"{autor} (Unsplash)", "page": (foto.get("links") or {}).get("html", "")}
+
+
 def _from_openverse(consulta: str, session) -> dict | None:
     """Foto con licencia libre (casi siempre de Flickr). Se acepta solo si el título contiene todas las palabras del plato."""
     def palabras_de(texto: str) -> set[str]:  # sin signos de puntuación: «pudding:» cuenta como «pudding»
@@ -158,6 +179,7 @@ def find_dish_image(title: str, photo_query: str = "", photo_query_en: str = "",
         lambda: _from_wikipedia(consulta, session),
         lambda: _from_wikipedia(title, session) if normalize_name(title) != normalize_name(consulta) else None,
         lambda: _from_pexels(photo_query_en or consulta, session),
+        lambda: _from_unsplash(photo_query_en or consulta, session),
         lambda: _from_openverse(photo_query_en or "", session),
         lambda: _from_commons(consulta, session),
     ]

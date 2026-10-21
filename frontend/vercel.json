@@ -12,7 +12,7 @@
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.themealdb.com https://themealdb.com https://upload.wikimedia.org https://thumb.wikimedia.org https://api.openverse.org; font-src 'self' data:; connect-src 'self' https://recetario-api-alpha.vercel.app; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.themealdb.com https://themealdb.com https://upload.wikimedia.org https://thumb.wikimedia.org https://api.openverse.org https://images.unsplash.com https://images.pexels.com; font-src 'self' data:; connect-src 'self' https://recetario-api-alpha.vercel.app; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
         }
       ]
     }

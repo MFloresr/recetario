@@ -130,6 +130,8 @@ AI_FALLBACK_MODELS = env.list("AI_FALLBACK_MODELS", default=[])
 
 # Opcional: clave gratuita de https://www.pexels.com/api/ para fotos de muestra de más platos
 PEXELS_API_KEY = env("PEXELS_API_KEY", default="")
+# Opcional: clave gratuita de https://unsplash.com/developers (reserva si Pexels no responde)
+UNSPLASH_ACCESS_KEY = env("UNSPLASH_ACCESS_KEY", default="")
 
 # Traducción de las recetas al español (TheMealDB solo existe en inglés).
 # auto = IA si hay clave configurada, si no MyMemory (gratuito, sin clave); también: mymemory, ai, none

@@ -119,6 +119,22 @@ def test_sin_nombre_en_ingles_no_se_llama_a_openverse(wikipedia):
     assert wikipedia.openverse_calls == []
 
 
+def test_unsplash_es_reserva_si_pexels_no_da_foto(wikipedia, settings):
+    settings.PEXELS_API_KEY = "k"
+    settings.UNSPLASH_ACCESS_KEY = "u"
+    wikipedia.unsplash = [{"urls": {"regular": "https://img/u.jpg"}, "user": {"name": "Eva"}, "links": {"html": "https://unsplash.com/photos/1"}}]
+    foto = find_dish_image("Arroz con leche", photo_query_en="rice pudding")
+    assert foto == {"url": "https://img/u.jpg", "credit": "Eva (Unsplash)", "page": "https://unsplash.com/photos/1"}
+    assert wikipedia.unsplash_calls[0]["headers"]["Authorization"] == "Client-ID u"
+
+
+def test_sin_clave_de_unsplash_no_se_llama_a_unsplash(wikipedia, settings):
+    settings.UNSPLASH_ACCESS_KEY = ""
+    wikipedia.unsplash = [{"urls": {"regular": "x"}}]
+    find_dish_image("Arroz con leche", photo_query_en="rice pudding")
+    assert wikipedia.unsplash_calls == []
+
+
 def test_pexels_gana_a_openverse(wikipedia, settings):
     settings.PEXELS_API_KEY = "k"
     wikipedia.pexels = [{"src": {"large": "https://img/p.jpg"}, "photographer": "J", "url": "u"}]
