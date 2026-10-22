@@ -1,6 +1,7 @@
 """Vistas de la API. Solo validan la petición y delegan en services/."""
 
 from django.db import IntegrityError, transaction
+from django.db.models import Count
 from rest_framework import mixins, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
@@ -11,9 +12,11 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import FavoriteRecipe, Ingredient, MealPlan, RecipeCache, ShoppingListItem
+from .models import Dish, FavoriteRecipe, Ingredient, MealPlan, RecipeCache, ShoppingListItem
+from .exceptions import ExternalServiceError
 from .normalization import normalize_name
 from .serializers import (
+    DishSerializer,
     AIRecipeInputSerializer,
     AIMealPlanInputSerializer,
     AISuggestionsInputSerializer,
@@ -34,8 +37,11 @@ from .catalog import to_english
 from .services.localization import localize_recipe, localize_summaries
 from .services.matching import calculate_match, with_spanish_names
 from .services.recipes import AI_SOURCE, get_recipe, is_ai_recipe_of, save_ai_recipe, save_recipe, save_suggestion_for_user
-from .services.suggestions import build_suggestions, parse_ingredients
+from .services.suggestions import build_suggestions, catalog_suggestions, parse_ingredients
 from .services.translation import translate_strings
+
+
+MIN_CATALOG_RESULTS = 5  # con menos resultados propios se completa con TheMealDB
 
 
 @api_view(["GET"])
@@ -135,18 +141,26 @@ class RecipeSuggestionsView(APIView):
         pantry = parse_ingredients(datos["ingredients"])
         if not pantry and not datos["search"].strip():
             raise ValidationError({"ingredients": "Indica al menos un ingrediente."})
-        busqueda = datos["search"].strip()
-        if busqueda and datos["lang"] == "es":
-            # TheMealDB busca por título en inglés: la búsqueda en español se traduce primero
-            traducida = translate_strings([busqueda], "es", "en").get(busqueda)
-            busqueda = traducida or to_english(busqueda)
-        resultado = build_suggestions(
-            pantry,
-            category=datos["category"],
-            max_missing=datos["max_missing"],
-            search=busqueda,
+        # Primero el catálogo propio (en español, sin servicios externos); TheMealDB solo completa si hay pocos
+        propios = catalog_suggestions(
+            pantry, category=datos["category"], max_missing=datos["max_missing"], search=datos["search"].strip()
         )
-        resultado["results"] = localize_summaries(resultado["results"], datos["lang"])
+        resultado = {"count": len(propios), "results": propios}
+        if len(propios) < MIN_CATALOG_RESULTS:
+            busqueda = datos["search"].strip()
+            if busqueda and datos["lang"] == "es":
+                # TheMealDB busca por título en inglés: la búsqueda en español se traduce primero
+                traducida = translate_strings([busqueda], "es", "en").get(busqueda)
+                busqueda = traducida or to_english(busqueda)
+            try:
+                externo = build_suggestions(pantry, category=datos["category"], max_missing=datos["max_missing"], search=busqueda)
+            except ExternalServiceError:
+                if not propios:
+                    raise  # sin catálogo y sin TheMealDB: error claro en lugar de «0 resultados»
+                externo = {"results": []}
+            externos = localize_summaries(externo["results"], datos["lang"])
+            resultado["results"] = (propios + externos)[:20]
+            resultado["count"] = len(resultado["results"])
         return Response(resultado)
 
 
@@ -162,7 +176,7 @@ class RecipeDetailView(APIView):
             raise NotFound("No se encontró la receta.")
         pantry = parse_ingredients(request.query_params.get("ingredients", ""))
         coincidencia = None
-        if pantry and propia_ia:
+        if pantry and (propia_ia or receta.get("source") == "catalog"):
             coincidencia = calculate_match(pantry, receta["ingredients"], translate=False)
             coincidencia["missing"] = [
                 {**i, "name_es": i["ingredient"]} for i in receta["ingredients"] if i["ingredient"] in coincidencia["missing_ingredients"]
@@ -295,3 +309,41 @@ class AIMealPlanView(AIBaseView):
 class MealPlanViewSet(OwnedViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.DestroyModelMixin):
     queryset = MealPlan.objects.all()
     serializer_class = MealPlanSerializer
+
+
+class DishViewSet(viewsets.ReadOnlyModelViewSet):
+    """Catálogo de platos de solo lectura. Filtros: `country` (ISO), `meal`, `diet`, `q`; paginación con `limit` y `offset`."""
+
+    serializer_class = DishSerializer
+    MAX_LIMIT = 100
+
+    def get_queryset(self):
+        params = self.request.query_params
+        platos = Dish.objects.all()
+        if params.get("country"):
+            platos = platos.filter(country=params["country"].upper())
+        if params.get("meal"):
+            platos = platos.filter(meal_type=params["meal"].lower())
+        if params.get("diet"):
+            platos = platos.filter(diets__icontains=f'"{params["diet"].lower()}"')
+        if params.get("q"):
+            platos = platos.filter(name_es__icontains=params["q"])
+        return platos
+
+    def list(self, request, *args, **kwargs):
+        platos = self.filter_queryset(self.get_queryset())
+        try:
+            limit = min(max(int(request.query_params.get("limit", 50)), 1), self.MAX_LIMIT)
+            offset = max(int(request.query_params.get("offset", 0)), 0)
+        except ValueError:
+            raise ValidationError({"detail": "limit y offset deben ser números."})
+        return Response({
+            "count": platos.count(),
+            "results": self.get_serializer(platos[offset:offset + limit], many=True).data,
+        })
+
+    @action(detail=False, methods=["get"])
+    def countries(self, request):
+        """Países con platos y cuántos tiene cada uno."""
+        filas = Dish.objects.exclude(country="").values("country").annotate(total=Count("id")).order_by("-total")
+        return Response([{"country": f["country"], "total": f["total"]} for f in filas])

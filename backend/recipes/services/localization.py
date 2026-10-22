@@ -59,7 +59,7 @@ def localize_recipe(receta: dict, lang: str, match: dict | None = None) -> dict:
     """Receta completa en español: título, categoría, país, ingredientes, medidas e instrucciones."""
     if lang not in SUPPORTED:
         return receta
-    if receta.get("source") == "ai":  # ya está en español: no hay nada que traducir
+    if receta.get("source") in ("ai", "catalog"):  # ya está en español: no hay nada que traducir
         salida = dict(receta)
         if match is not None:
             salida["match"] = match

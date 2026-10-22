@@ -116,3 +116,35 @@ class MealPlan(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Dish(models.Model):
+    """Plato del catálogo propio: ordenado por país, tipo de comida y dieta. Se carga desde Wikidata y TheMealDB."""
+
+    source = models.CharField(max_length=30)  # «wikidata», «themealdb»
+    source_id = models.CharField(max_length=50)
+    name_es = models.CharField(max_length=200)
+    name_en = models.CharField(max_length=200, blank=True)
+    description = models.CharField(max_length=400, blank=True)
+    country = models.CharField(max_length=2, blank=True, db_index=True)  # ISO 3166-1 alfa-2
+    meal_type = models.CharField(max_length=20, blank=True, db_index=True)  # desayuno, postre, entrante...
+    diets = models.JSONField(default=list)  # etiquetas deducidas, nunca seguras: ver `reviewed`
+    ingredients = models.JSONField(default=list)  # [{"ingredient": "...", "measure": "..."}]
+    steps = models.TextField(blank=True)
+    calories = models.PositiveIntegerField(null=True, blank=True)
+    image = models.URLField(max_length=600, blank=True)
+    image_credit = models.CharField(max_length=200, blank=True)
+    image_license = models.CharField(max_length=60, blank=True)
+    enriched = models.BooleanField(default=False)  # la IA ya completó nombre, receta, calorías y dietas
+    reviewed = models.BooleanField(default=False)  # False = importado o generado, sin revisar
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["country", "name_es"]
+        verbose_name_plural = "dishes"
+        constraints = [
+            models.UniqueConstraint(fields=["source", "source_id"], name="unique_dish_per_source"),
+        ]
+
+    def __str__(self):
+        return self.name_es

@@ -179,6 +179,35 @@ export interface OpcionesPlan {
   use_pantry: boolean
 }
 
+// --- Catálogo de platos ---
+
+export interface Plato {
+  id: number
+  name_es: string
+  name_en: string
+  description: string
+  country: string
+  meal_type: string
+  diets: string[]
+  ingredients: { ingredient: string; measure: string }[]
+  steps: string
+  calories: number | null
+  image: string
+  image_credit: string
+  image_license: string
+  reviewed: boolean
+  source: string
+}
+
+export interface FiltrosPlatos {
+  country?: string
+  meal?: string
+  diet?: string
+  q?: string
+  limit?: number
+  offset?: number
+}
+
 export interface MealPlan {
   id: number
   title: string

@@ -9,8 +9,9 @@ from django.db import DatabaseError, transaction
 
 from ..exceptions import ExternalServiceError
 
-from ..models import RecipeCache
+from ..models import Dish, RecipeCache
 from ..normalization import normalize_name
+from ..spanish import pais_es
 from .themealdb import SOURCE, TheMealDBClient
 
 MEMORY_TTL = 60 * 60  # 1 hora
@@ -18,6 +19,26 @@ logger = logging.getLogger(__name__)
 
 
 AI_SOURCE = "ai"
+CATALOG_SOURCE = "catalog"
+DISH_PREFIX = "dish-"
+
+
+def dish_to_recipe(plato: Dish) -> dict:
+    """Plato del catálogo con el formato de receta de la app (ya está en español, como las de la IA)."""
+    return {
+        "external_id": f"{DISH_PREFIX}{plato.id}",
+        "title": plato.name_es,
+        "image": plato.image,
+        "category": plato.meal_type,
+        "area": pais_es(plato.country),
+        "instructions": plato.steps,
+        "ingredients": plato.ingredients,
+        "source": CATALOG_SOURCE,
+        "description": plato.description,
+        "calories": plato.calories,
+        "diets": plato.diets,
+        "image_credit": plato.image_credit,
+    }
 
 
 def recipe_to_dict(recipe: RecipeCache) -> dict:
@@ -96,6 +117,11 @@ def save_ai_recipe(user_id: int, datos: dict) -> RecipeCache:
 
 def fetch_recipe(external_id: str, client: TheMealDBClient | None = None) -> dict | None:
     """Receta normalizada desde la base de datos, la memoria o TheMealDB. No guarda nada en la base de datos."""
+    if external_id.startswith(DISH_PREFIX):
+        plato = Dish.objects.filter(id=external_id[len(DISH_PREFIX):] or 0, enriched=True).first() if external_id[len(DISH_PREFIX):].isdigit() else None
+        if plato:
+            return dish_to_recipe(plato)
+        return None
     en_bd = RecipeCache.objects.filter(external_id=external_id).first()
     if en_bd:
         return recipe_to_dict(en_bd)

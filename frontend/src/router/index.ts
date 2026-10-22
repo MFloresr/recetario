@@ -58,6 +58,12 @@ const router = createRouter({
       meta: { titulo: 'Dieta semanal', privada: true },
     },
     {
+      path: '/explore',
+      name: 'explore',
+      component: () => import('@/views/ExploreView.vue'),
+      meta: { titulo: 'Explorar platos', privada: true },
+    },
+    {
       path: '/recipes/:externalId',
       name: 'recipe',
       component: () => import('@/views/RecipeDetailView.vue'),

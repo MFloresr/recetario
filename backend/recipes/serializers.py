@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import FavoriteRecipe, Ingredient, MealPlan, RecipeCache, ShoppingListItem
+from .models import Dish, FavoriteRecipe, Ingredient, MealPlan, RecipeCache, ShoppingListItem
 from .normalization import normalize_name
 from .services.ai import MEAL_TYPES, StepField, normalize_difficulty, normalize_meal_type
 from .services.localization import localize_recipe
@@ -270,4 +270,14 @@ class MealPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = MealPlan
         fields = ["id", "title", "options", "days", "notes", "created_at"]
+        read_only_fields = fields
+
+
+class DishSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Dish
+        fields = [
+            "id", "name_es", "name_en", "description", "country", "meal_type", "diets", "ingredients", "steps",
+            "calories", "image", "image_credit", "image_license", "reviewed", "source",
+        ]
         read_only_fields = fields

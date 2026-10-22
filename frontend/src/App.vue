@@ -37,6 +37,7 @@ const enlaces = [
     icono: 'mdi-heart-outline',
     iconoActivo: 'mdi-heart',
   },
+  { nombre: 'explore', texto: 'Explorar', icono: 'mdi-earth', iconoActivo: 'mdi-earth' },
   {
     nombre: 'meal-plan',
     texto: 'Dieta',

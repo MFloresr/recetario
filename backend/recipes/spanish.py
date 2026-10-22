@@ -124,3 +124,19 @@ def measure_es(medida: str) -> str:
     for patron, cambio in _MEASURE_RULES:
         texto = re.sub(patron, cambio, texto, flags=re.IGNORECASE)
     return re.sub(r"\s+", " ", texto).strip()
+
+
+# código ISO del país de un plato del catálogo → nombre en español
+PAISES_ES = {
+    "AR": "Argentina", "AT": "Austria", "BE": "Bélgica", "BO": "Bolivia", "BR": "Brasil", "CA": "Canadá", "CH": "Suiza",
+    "CL": "Chile", "CN": "China", "CO": "Colombia", "CU": "Cuba", "DE": "Alemania", "EG": "Egipto", "ES": "España",
+    "FR": "Francia", "GB": "Reino Unido", "GR": "Grecia", "HR": "Croacia", "HU": "Hungría", "ID": "Indonesia", "IE": "Irlanda",
+    "IL": "Israel", "IN": "India", "IT": "Italia", "JM": "Jamaica", "JP": "Japón", "KE": "Kenia", "KR": "Corea del Sur",
+    "LB": "Líbano", "MA": "Marruecos", "MX": "México", "MY": "Malasia", "NL": "Países Bajos", "PE": "Perú", "PH": "Filipinas",
+    "PL": "Polonia", "PT": "Portugal", "RU": "Rusia", "SE": "Suecia", "TH": "Tailandia", "TN": "Túnez", "TR": "Turquía",
+    "UA": "Ucrania", "US": "Estados Unidos", "UY": "Uruguay", "VE": "Venezuela", "VN": "Vietnam",
+}
+
+
+def pais_es(codigo: str) -> str:
+    return PAISES_ES.get(codigo, codigo)

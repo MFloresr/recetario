@@ -3,9 +3,11 @@ import type {
   AiAdaptation,
   AiSuggestion,
   Favorite,
+  FiltrosPlatos,
   Ingredient,
   MealPlan,
   OpcionesPlan,
+  Plato,
   Recipe,
   ShoppingItem,
   SuggestionFilters,
@@ -197,4 +199,13 @@ export const mealPlansApi = {
   remove: async (id: number) => {
     await api.delete(`/meal-plans/${id}/`)
   },
+}
+
+// --- Catálogo de platos ---
+
+export const dishesApi = {
+  list: async (filtros: FiltrosPlatos = {}) =>
+    (await api.get<{ count: number; results: Plato[] }>('/dishes/', { params: filtros })).data,
+  countries: async () =>
+    (await api.get<{ country: string; total: number }[]>('/dishes/countries/')).data,
 }

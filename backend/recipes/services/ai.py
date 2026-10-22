@@ -176,6 +176,36 @@ class TranslationOutput(serializers.Serializer):
     translations = serializers.ListField(child=serializers.CharField(allow_blank=True))
 
 
+DIETS = ["vegetariano", "vegano", "sin gluten", "sin lactosa", "pescetariano"]
+DISH_MEAL_TYPES = ["desayuno", "almuerzo", "cena", "postre", "entrante", "plato principal", "snack", "bebida"]
+
+
+class _DishIngredient(serializers.Serializer):
+    name = serializers.CharField(max_length=100)
+    quantity = serializers.CharField(max_length=60, allow_blank=True, required=False, default="")
+
+
+class _EnrichedDish(serializers.Serializer):
+    name_es = serializers.CharField(max_length=200)
+    description = serializers.CharField(max_length=400, allow_blank=True, required=False, default="")
+    meal_type = serializers.CharField(allow_blank=True, required=False, default="")
+    diets = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    calories = serializers.IntegerField(min_value=0, max_value=3000, allow_null=True, required=False, default=None)
+    ingredients = serializers.ListField(child=_DishIngredient(), required=False, default=list)
+    steps = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+
+    def validate_diets(self, value):
+        return [d for d in dict.fromkeys(x.strip().lower() for x in value) if d in DIETS]  # solo etiquetas conocidas
+
+    def validate_meal_type(self, value):
+        valor = normalize_meal_type(value)
+        return valor if valor in DISH_MEAL_TYPES else ""
+
+
+class EnrichOutput(serializers.Serializer):
+    dishes = serializers.ListField(child=_EnrichedDish())
+
+
 # --- Interfaz común ---
 
 
@@ -191,6 +221,9 @@ class AIRecipeService(ABC):
 
     @abstractmethod
     def generate_meal_plan(self, options: dict) -> dict: ...
+
+    @abstractmethod
+    def enrich_dishes(self, dishes: list[dict]) -> list[dict]: ...
 
     @abstractmethod
     def translate(self, texts: list[str], source: str = "en", target: str = "es") -> list[str]: ...
@@ -349,6 +382,27 @@ class OpenAICompatibleService(AIRecipeService):
             '"calories", "ingredients": []}]}, ... los 7 días], "notes": ""}.'
         )
         return self._ask(prompt, MealPlanOutput)
+
+    def enrich_dishes(self, dishes: list[dict]) -> list[dict]:
+        """Completa platos del catálogo: nombre en español, tipo, calorías, dietas y, si faltan, ingredientes y pasos."""
+        prompt = (
+            "Completa estos platos de un catálogo de cocina. Para cada uno, en el mismo orden:\n"
+            "- `name_es`: el nombre habitual en español.\n"
+            "- `description`: una frase de máximo 120 caracteres.\n"
+            f"- `meal_type`: uno de {', '.join(DISH_MEAL_TYPES)}.\n"
+            "- `calories`: kcal aproximadas de una ración.\n"
+            f"- `diets`: SOLO las etiquetas de {', '.join(DIETS)} que sean ciertas con los ingredientes de la receta "
+            "tradicional. Ante la duda, no pongas la etiqueta (hay personas con alergias).\n"
+            "- `ingredients` (lista de {name, quantity}, en español; `name` solo el ingrediente, sin cantidad) y `steps` (de 5 a 10 pasos claros): si el plato ya trae "
+            "ingredientes o pasos, tradúcelos al español sin cambiarlos; si no trae, escribe la receta tradicional.\n"
+            f"Platos: {json.dumps(dishes, ensure_ascii=False)}\n"
+            'Devuelve {"dishes": [...]} con exactamente un elemento por plato.'
+        )
+        for _ in range(2):
+            resultado = self._ask(prompt, EnrichOutput)["dishes"]
+            if len(resultado) == len(dishes):
+                return resultado
+        raise AIServiceError("La IA no devolvió todos los platos.", status_code=502, code="ai_invalid_json")
 
     def translate(self, texts: list[str], source: str = "en", target: str = "es") -> list[str]:
         """Traduce una lista de textos manteniendo el orden y la longitud de la lista."""

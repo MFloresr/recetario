@@ -8,6 +8,7 @@ router = SimpleRouter()
 router.register("ingredients", views.IngredientViewSet, basename="ingredient")
 router.register("shopping-list", views.ShoppingListViewSet, basename="shopping-list")
 router.register("favorites", views.FavoriteViewSet, basename="favorite")
+router.register("dishes", views.DishViewSet, basename="dish")
 router.register("meal-plans", views.MealPlanViewSet, basename="meal-plan")
 
 urlpatterns = [
